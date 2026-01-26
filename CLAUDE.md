@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 한국 주식 투자 아이디어 추적 및 분석 시스템. YouTube 언급량, KIS 주가/거래량, 공시 정보를 결합하여 투자 시그널을 제공합니다.
 
+**GitHub**: https://github.com/Johnhyeon/stock_tracker
+
 ## 개발 명령어
 
 ### 백엔드 (FastAPI + PostgreSQL)
