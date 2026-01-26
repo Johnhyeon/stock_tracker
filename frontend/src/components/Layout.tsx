@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { clsx } from 'clsx'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -43,6 +44,33 @@ const dropdownMenus = [
   },
 ]
 
+// 테마 모드 아이콘
+function ThemeIcon({ mode }: { mode: 'light' | 'dark' | 'auto' }) {
+  if (mode === 'light') {
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    )
+  }
+  if (mode === 'dark') {
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+      </svg>
+    )
+  }
+  // auto
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
 function DropdownMenu({ label, items }: { label: string; items: { path: string; label: string }[] }) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
@@ -66,8 +94,10 @@ function DropdownMenu({ label, items }: { label: string; items: { path: string; 
       <button
         onClick={() => setOpen(!open)}
         className={clsx(
-          'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md',
-          isActive ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'
+          'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+          isActive
+            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
+            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
         )}
       >
         {label}
@@ -76,17 +106,17 @@ function DropdownMenu({ label, items }: { label: string; items: { path: string; 
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+        <div className="absolute left-0 mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50">
           {items.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               onClick={() => setOpen(false)}
               className={clsx(
-                'block px-4 py-2 text-sm',
+                'block px-4 py-2 text-sm transition-colors',
                 location.pathname === item.path
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-primary-50 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
               )}
             >
               {item.label}
@@ -100,15 +130,18 @@ function DropdownMenu({ label, items }: { label: string; items: { path: string; 
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
+  const { mode, toggleMode } = useDarkMode()
+
+  const modeLabel = mode === 'auto' ? '자동' : mode === 'light' ? '라이트' : '다크'
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
               <Link to="/" className="flex items-center">
-                <span className="text-xl font-bold text-primary-600">
+                <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
                   Investment Tracker
                 </span>
               </Link>
@@ -119,10 +152,10 @@ export default function Layout({ children }: LayoutProps) {
                     key={item.path}
                     to={item.path}
                     className={clsx(
-                      'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md',
+                      'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
                       location.pathname === item.path
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                     )}
                   >
                     {item.label}
@@ -136,10 +169,18 @@ export default function Layout({ children }: LayoutProps) {
                 ))}
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-3">
+              {/* 테마 토글 버튼 */}
+              <button
+                onClick={toggleMode}
+                className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                title={`현재: ${modeLabel} (클릭하여 변경)`}
+              >
+                <ThemeIcon mode={mode} />
+              </button>
               <Link
                 to="/ideas/create"
-                className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700"
+                className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 transition-colors"
               >
                 + 새 아이디어
               </Link>
