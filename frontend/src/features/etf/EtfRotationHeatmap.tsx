@@ -13,17 +13,17 @@ const periodLabels: Record<Period, string> = {
   '60d': '60일',
 }
 
-// 등락률에 따른 색상 클래스
+// 등락률에 따른 색상 클래스 (다크모드 지원)
 function getChangeColorClass(change: number | null): string {
-  if (change === null) return 'bg-gray-100 text-gray-500'
-  if (change >= 5) return 'bg-red-500 text-white'
-  if (change >= 3) return 'bg-red-400 text-white'
-  if (change >= 1) return 'bg-red-200 text-red-800'
-  if (change >= 0) return 'bg-red-50 text-red-600'
-  if (change >= -1) return 'bg-blue-50 text-blue-600'
-  if (change >= -3) return 'bg-blue-200 text-blue-800'
-  if (change >= -5) return 'bg-blue-400 text-white'
-  return 'bg-blue-500 text-white'
+  if (change === null) return 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+  if (change >= 5) return 'bg-red-600 dark:bg-red-500 text-white'
+  if (change >= 3) return 'bg-red-500 dark:bg-red-600 text-white'
+  if (change >= 1) return 'bg-red-300 dark:bg-red-700 text-red-900 dark:text-red-100'
+  if (change >= 0) return 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200'
+  if (change >= -1) return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+  if (change >= -3) return 'bg-blue-300 dark:bg-blue-700 text-blue-900 dark:text-blue-100'
+  if (change >= -5) return 'bg-blue-500 dark:bg-blue-600 text-white'
+  return 'bg-blue-600 dark:bg-blue-500 text-white'
 }
 
 // 거래대금 비율에 따른 아이콘
@@ -36,19 +36,19 @@ function getVolumeIndicator(ratio: number | null): string {
   return ''
 }
 
-// 시그널 타입별 배지 색상
+// 시그널 타입별 배지 색상 (다크모드 지원)
 function getSignalBadgeClass(signalType: string): string {
   switch (signalType) {
     case 'STRONG_UP':
-      return 'bg-red-100 text-red-700 border-red-300'
+      return 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 border-red-300 dark:border-red-700'
     case 'MOMENTUM_UP':
-      return 'bg-orange-100 text-orange-700 border-orange-300'
+      return 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200 border-orange-300 dark:border-orange-700'
     case 'REVERSAL_UP':
-      return 'bg-yellow-100 text-yellow-700 border-yellow-300'
+      return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700'
     case 'STRONG_DOWN':
-      return 'bg-blue-100 text-blue-700 border-blue-300'
+      return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 border-blue-300 dark:border-blue-700'
     default:
-      return 'bg-gray-100 text-gray-700 border-gray-300'
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
   }
 }
 
@@ -213,18 +213,18 @@ export default function EtfRotationHeatmap() {
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">섹터 순환매 히트맵</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">섹터 순환매 히트맵</h2>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {period === 'realtime' ? 'KIS API 실시간' : 'ETF 등락률 기준'} • {lastUpdated ? new Date(lastUpdated).toLocaleString('ko-KR') : ''}
             </p>
             {period === 'realtime' && (
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                 marketStatus === 'open'
-                  ? 'bg-green-100 text-green-700'
+                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
                   : marketStatus === 'closed'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
               }`}>
                 {marketStatus === 'open' ? '🟢 장중' : marketStatus === 'closed' ? '⚪ 장마감' : '🔴 오류'}
               </span>
@@ -257,7 +257,7 @@ export default function EtfRotationHeatmap() {
                     ? p === 'realtime'
                       ? 'bg-green-600 text-white'
                       : 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 {periodLabels[p]}
@@ -269,8 +269,8 @@ export default function EtfRotationHeatmap() {
 
       {/* 시그널 요약 */}
       {signals.length > 0 && (
-        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-4">
-          <h3 className="font-semibold text-orange-800 mb-2">순환매 시그널</h3>
+        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/30 dark:to-yellow-900/30 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <h3 className="font-semibold text-orange-800 dark:text-orange-300 mb-2">순환매 시그널</h3>
           <div className="flex flex-wrap gap-2">
             {signals.slice(0, 6).map((signal) => (
               <div
@@ -353,25 +353,25 @@ export default function EtfRotationHeatmap() {
       </div>
 
       {/* 범례 */}
-      <div className="flex items-center justify-center gap-4 text-xs text-gray-500 pt-4 border-t">
+      <div className="flex items-center justify-center gap-4 text-xs text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-1">
-          <span className="w-4 h-4 rounded bg-red-500"></span>
+          <span className="w-4 h-4 rounded bg-red-600 dark:bg-red-500"></span>
           <span>+5% 이상</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="w-4 h-4 rounded bg-red-200"></span>
+          <span className="w-4 h-4 rounded bg-red-300 dark:bg-red-700"></span>
           <span>+1~3%</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="w-4 h-4 rounded bg-gray-100"></span>
+          <span className="w-4 h-4 rounded bg-gray-200 dark:bg-gray-700"></span>
           <span>보합</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="w-4 h-4 rounded bg-blue-200"></span>
+          <span className="w-4 h-4 rounded bg-blue-300 dark:bg-blue-700"></span>
           <span>-1~3%</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="w-4 h-4 rounded bg-blue-500"></span>
+          <span className="w-4 h-4 rounded bg-blue-600 dark:bg-blue-500"></span>
           <span>-5% 이하</span>
         </div>
         <div className="flex items-center gap-1 ml-4">
@@ -381,50 +381,50 @@ export default function EtfRotationHeatmap() {
       </div>
 
       {/* 상세 테이블 */}
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b">
-          <h3 className="font-semibold text-gray-900">상세 데이터</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">상세 데이터</h3>
         </div>
         <div className="overflow-x-auto">
           {period === 'realtime' ? (
             // 실시간 테이블
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">순위</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">테마</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">현재가</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">등락률</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">5일</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">20일</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">고가</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">저가</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">순위</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">테마</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">현재가</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">등락률</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">5일</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">20일</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">고가</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">저가</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {realtimeThemes.map((item, idx) => (
-                  <tr key={item.etf_code} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm text-gray-500">{idx + 1}</td>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                  <tr key={item.etf_code} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                       {item.theme}
-                      <span className="ml-1 text-xs text-gray-400">({item.etf_code})</span>
+                      <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">({item.etf_code})</span>
                     </td>
-                    <td className="px-4 py-2 text-sm text-right font-medium text-gray-900">
+                    <td className="px-4 py-2 text-sm text-right font-medium text-gray-900 dark:text-gray-100">
                       {item.current_price?.toLocaleString()}
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right font-bold ${item.change_1d && item.change_1d > 0 ? 'text-red-600' : item.change_1d && item.change_1d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right font-bold ${item.change_1d && item.change_1d > 0 ? 'text-red-600 dark:text-red-400' : item.change_1d && item.change_1d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_1d !== null ? `${item.change_1d > 0 ? '+' : ''}${item.change_1d.toFixed(2)}%` : '-'}
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right ${item.change_5d && item.change_5d > 0 ? 'text-red-600' : item.change_5d && item.change_5d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right ${item.change_5d && item.change_5d > 0 ? 'text-red-600 dark:text-red-400' : item.change_5d && item.change_5d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_5d !== null ? `${item.change_5d > 0 ? '+' : ''}${item.change_5d.toFixed(1)}%` : '-'}
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right ${item.change_20d && item.change_20d > 0 ? 'text-red-600' : item.change_20d && item.change_20d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right ${item.change_20d && item.change_20d > 0 ? 'text-red-600 dark:text-red-400' : item.change_20d && item.change_20d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_20d !== null ? `${item.change_20d > 0 ? '+' : ''}${item.change_20d.toFixed(1)}%` : '-'}
                     </td>
-                    <td className="px-4 py-2 text-sm text-right text-red-500">
+                    <td className="px-4 py-2 text-sm text-right text-red-500 dark:text-red-400">
                       {item.high_price?.toLocaleString()}
                     </td>
-                    <td className="px-4 py-2 text-sm text-right text-blue-500">
+                    <td className="px-4 py-2 text-sm text-right text-blue-500 dark:text-blue-400">
                       {item.low_price?.toLocaleString()}
                     </td>
                   </tr>
@@ -433,45 +433,45 @@ export default function EtfRotationHeatmap() {
             </table>
           ) : (
             // 히스토리 테이블
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">순위</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">테마</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">1일</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">5일</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">20일</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">60일</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">거래대금</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">평균比</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">순위</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">테마</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">1일</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">5일</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">20일</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">60일</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">거래대금</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">평균比</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {themes.map((item, idx) => (
-                  <tr key={item.etf_code} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-sm text-gray-500">{idx + 1}</td>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                  <tr key={item.etf_code} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{idx + 1}</td>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                       {item.theme}
-                      <span className="ml-1 text-xs text-gray-400">({item.etf_code})</span>
+                      <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">({item.etf_code})</span>
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right ${item.change_1d && item.change_1d > 0 ? 'text-red-600' : item.change_1d && item.change_1d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right ${item.change_1d && item.change_1d > 0 ? 'text-red-600 dark:text-red-400' : item.change_1d && item.change_1d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_1d !== null ? `${item.change_1d > 0 ? '+' : ''}${item.change_1d.toFixed(1)}%` : '-'}
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right font-medium ${item.change_5d && item.change_5d > 0 ? 'text-red-600' : item.change_5d && item.change_5d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right font-medium ${item.change_5d && item.change_5d > 0 ? 'text-red-600 dark:text-red-400' : item.change_5d && item.change_5d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_5d !== null ? `${item.change_5d > 0 ? '+' : ''}${item.change_5d.toFixed(1)}%` : '-'}
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right ${item.change_20d && item.change_20d > 0 ? 'text-red-600' : item.change_20d && item.change_20d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right ${item.change_20d && item.change_20d > 0 ? 'text-red-600 dark:text-red-400' : item.change_20d && item.change_20d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_20d !== null ? `${item.change_20d > 0 ? '+' : ''}${item.change_20d.toFixed(1)}%` : '-'}
                     </td>
-                    <td className={`px-4 py-2 text-sm text-right ${item.change_60d && item.change_60d > 0 ? 'text-red-600' : item.change_60d && item.change_60d < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-2 text-sm text-right ${item.change_60d && item.change_60d > 0 ? 'text-red-600 dark:text-red-400' : item.change_60d && item.change_60d < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                       {item.change_60d !== null ? `${item.change_60d > 0 ? '+' : ''}${item.change_60d.toFixed(1)}%` : '-'}
                     </td>
-                    <td className="px-4 py-2 text-sm text-right text-gray-600">
+                    <td className="px-4 py-2 text-sm text-right text-gray-600 dark:text-gray-300">
                       {formatAmount(item.trading_value)}
                     </td>
                     <td className="px-4 py-2 text-sm text-right">
                       {item.trading_value_ratio !== null ? (
-                        <span className={item.trading_value_ratio >= 1.5 ? 'text-orange-600 font-medium' : 'text-gray-500'}>
+                        <span className={item.trading_value_ratio >= 1.5 ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
                           {item.trading_value_ratio.toFixed(1)}x
                         </span>
                       ) : '-'}
