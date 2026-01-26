@@ -64,8 +64,8 @@ function IdeaCard({ idea }: { idea: IdeaSummary }) {
         <CardContent>
           <div className="flex justify-between items-start mb-3">
             <div>
-              <h3 className="font-semibold text-lg">{idea.tickers.join(', ') || '종목 미지정'}</h3>
-              {idea.sector && <p className="text-sm text-gray-500">{idea.sector}</p>}
+              <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{idea.tickers.join(', ') || '종목 미지정'}</h3>
+              {idea.sector && <p className="text-sm text-gray-500 dark:text-gray-400">{idea.sector}</p>}
             </div>
             <Badge variant={healthVariant[idea.fundamental_health]}>
               {healthLabel[idea.fundamental_health]}
@@ -85,29 +85,29 @@ function IdeaCard({ idea }: { idea: IdeaSummary }) {
             </div>
           )}
 
-          <p className="text-sm text-gray-600 line-clamp-2 mb-4">{textContent || idea.thesis}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-4">{textContent || idea.thesis}</p>
 
           <div className="grid grid-cols-2 gap-4 text-sm">
             {!isWatching && (
               <div>
-                <span className="text-gray-500">투자금:</span>
-                <span className="ml-1 font-medium">
+                <span className="text-gray-500 dark:text-gray-400">투자금:</span>
+                <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
                   {Number(idea.total_invested).toLocaleString()}원
                 </span>
               </div>
             )}
             <div>
-              <span className="text-gray-500">목표:</span>
-              <span className="ml-1 font-medium">{Number(idea.target_return_pct)}%</span>
+              <span className="text-gray-500 dark:text-gray-400">목표:</span>
+              <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">{Number(idea.target_return_pct)}%</span>
             </div>
             <div>
-              <span className="text-gray-500">{isWatching ? '관심일:' : '보유일:'}</span>
-              <span className="ml-1 font-medium">{idea.days_active}일</span>
+              <span className="text-gray-500 dark:text-gray-400">{isWatching ? '관심일:' : '보유일:'}</span>
+              <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">{idea.days_active}일</span>
             </div>
             {!isWatching && (
               <div>
-                <span className="text-gray-500">잔여:</span>
-                <span className={`ml-1 font-medium ${isOverdue ? 'text-red-600' : ''}`}>
+                <span className="text-gray-500 dark:text-gray-400">잔여:</span>
+                <span className={`ml-1 font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
                   {isOverdue ? `${Math.abs(daysRemaining)}일 초과` : `${daysRemaining}일`}
                 </span>
               </div>
@@ -115,23 +115,23 @@ function IdeaCard({ idea }: { idea: IdeaSummary }) {
           </div>
 
           {idea.positions.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="text-xs text-gray-500 mb-2">보유 포지션</div>
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">보유 포지션</div>
               <div className="space-y-1.5">
                 {idea.positions.map((pos) => (
-                  <div key={pos.id} className="flex items-center justify-between text-xs bg-gray-50 px-2 py-1.5 rounded">
+                  <div key={pos.id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-700 px-2 py-1.5 rounded">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-medium">{pos.stock_name || pos.ticker}</span>
-                      <span className="text-gray-400">{pos.quantity}주</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{pos.stock_name || pos.ticker}</span>
+                      <span className="text-gray-400 dark:text-gray-500">{pos.quantity}주</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {pos.current_price && (
-                        <span className="text-gray-500">
+                        <span className="text-gray-500 dark:text-gray-400">
                           {Number(pos.current_price).toLocaleString()}원
                         </span>
                       )}
                       {pos.unrealized_return_pct != null && (
-                        <span className={`font-medium ${pos.unrealized_return_pct >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                        <span className={`font-medium ${pos.unrealized_return_pct >= 0 ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'}`}>
                           {pos.unrealized_return_pct >= 0 ? '+' : ''}{pos.unrealized_return_pct.toFixed(1)}%
                         </span>
                       )}
@@ -158,7 +158,7 @@ function IdeaListItem({ idea }: { idea: IdeaSummary }) {
 
   return (
     <Link to={`/ideas/${idea.id}`}>
-      <div className="flex gap-4 p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+      <div className="flex gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
         {images.length > 0 && (
           <div className="flex-shrink-0">
             <img
@@ -174,32 +174,32 @@ function IdeaListItem({ idea }: { idea: IdeaSummary }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-base truncate">
+            <h3 className="font-semibold text-base truncate text-gray-900 dark:text-gray-100">
               {idea.tickers.join(', ') || '종목 미지정'}
             </h3>
             {idea.sector && (
-              <span className="text-xs text-gray-500 flex-shrink-0">({idea.sector})</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">({idea.sector})</span>
             )}
             <Badge variant={healthVariant[idea.fundamental_health]} size="sm">
               {healthLabel[idea.fundamental_health]}
             </Badge>
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-1 mb-2">{textContent || idea.thesis}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1 mb-2">{textContent || idea.thesis}</p>
 
-          <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
             {!isWatching && (
               <span>투자금: {Number(idea.total_invested).toLocaleString()}원</span>
             )}
             <span>목표: {Number(idea.target_return_pct)}%</span>
             <span>{isWatching ? '관심:' : '보유:'} {idea.days_active}일</span>
             {!isWatching && (
-              <span className={isOverdue ? 'text-red-600' : ''}>
+              <span className={isOverdue ? 'text-red-600 dark:text-red-400' : ''}>
                 잔여: {isOverdue ? `${Math.abs(daysRemaining)}일 초과` : `${daysRemaining}일`}
               </span>
             )}
             {idea.positions.length > 0 && (
-              <span className="text-primary-600">포지션 {idea.positions.length}개</span>
+              <span className="text-primary-600 dark:text-primary-400">포지션 {idea.positions.length}개</span>
             )}
           </div>
         </div>
@@ -217,11 +217,11 @@ function ViewModeToggle({
   onChange: (mode: ViewMode) => void
 }) {
   return (
-    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
       <button
         onClick={() => onChange('card')}
         className={`p-1.5 rounded transition-colors ${
-          viewMode === 'card' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500 hover:text-gray-700'
+          viewMode === 'card' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
         }`}
         title="카드 보기"
       >
@@ -232,7 +232,7 @@ function ViewModeToggle({
       <button
         onClick={() => onChange('list')}
         className={`p-1.5 rounded transition-colors ${
-          viewMode === 'list' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500 hover:text-gray-700'
+          viewMode === 'list' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
         }`}
         title="목록 보기"
       >
@@ -255,7 +255,7 @@ function IdeaSection({
   emptyMessage: string
 }) {
   if (ideas.length === 0) {
-    return <p className="text-gray-500 text-center py-4">{emptyMessage}</p>
+    return <p className="text-gray-500 dark:text-gray-400 text-center py-4">{emptyMessage}</p>
   }
 
   if (viewMode === 'list') {
@@ -292,16 +292,16 @@ export default function Dashboard() {
     localStorage.setItem('dashboard-view-mode', viewMode)
   }, [viewMode])
 
-  if (loading) return <div className="text-center py-10">로딩 중...</div>
-  if (error) return <div className="text-center py-10 text-red-600">{error}</div>
-  if (!dashboard) return <div className="text-center py-10">데이터가 없습니다.</div>
+  if (loading) return <div className="text-center py-10 text-gray-600 dark:text-gray-300">로딩 중...</div>
+  if (error) return <div className="text-center py-10 text-red-600 dark:text-red-400">{error}</div>
+  if (!dashboard) return <div className="text-center py-10 text-gray-600 dark:text-gray-300">데이터가 없습니다.</div>
 
   const { stats, research_ideas, chart_ideas, watching_ideas } = dashboard
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">대시보드</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">대시보드</h1>
         <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
       </div>
 
@@ -309,20 +309,20 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">총 아이디어</div>
-            <div className="text-3xl font-bold">{stats.total_ideas}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">총 아이디어</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.total_ideas}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">활성 아이디어</div>
-            <div className="text-3xl font-bold text-green-600">{stats.active_ideas}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">활성 아이디어</div>
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.active_ideas}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">관심 종목</div>
-            <div className="text-3xl font-bold text-blue-600">{stats.watching_ideas}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">관심 종목</div>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.watching_ideas}</div>
           </CardContent>
         </Card>
       </div>
@@ -331,17 +331,17 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-3 mb-8">
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">총 투자금</div>
-            <div className="text-3xl font-bold">
+            <div className="text-sm text-gray-500 dark:text-gray-400">총 투자금</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               {Number(stats.total_invested).toLocaleString()}원
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">미실현 손익</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">미실현 손익</div>
             <div className={`text-3xl font-bold ${
-              Number(stats.total_unrealized_return) >= 0 ? 'text-red-500' : 'text-blue-500'
+              Number(stats.total_unrealized_return) >= 0 ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'
             }`}>
               {Number(stats.total_unrealized_return) >= 0 ? '+' : ''}
               {Math.round(Number(stats.total_unrealized_return)).toLocaleString()}원
@@ -350,13 +350,13 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">평균 수익률</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">평균 수익률</div>
             <div className={`text-3xl font-bold ${
               stats.avg_return_pct != null
                 ? stats.avg_return_pct >= 0
-                  ? 'text-red-500'
-                  : 'text-blue-500'
-                : ''
+                  ? 'text-red-500 dark:text-red-400'
+                  : 'text-blue-500 dark:text-blue-400'
+                : 'text-gray-900 dark:text-gray-100'
             }`}>
               {stats.avg_return_pct != null
                 ? `${stats.avg_return_pct >= 0 ? '+' : ''}${stats.avg_return_pct.toFixed(1)}%`
@@ -371,12 +371,12 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  리서치 포지션 <span className="text-primary-600">(60%)</span>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  리서치 포지션 <span className="text-primary-600 dark:text-primary-400">(60%)</span>
                 </h2>
                 <Badge variant="info">{research_ideas.length}개</Badge>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 기업 분석 기반 - 논리가 유효한 동안 보유
               </p>
             </CardHeader>
@@ -394,12 +394,12 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  차트 포지션 <span className="text-gray-600">(40%)</span>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  차트 포지션 <span className="text-gray-600 dark:text-gray-400">(40%)</span>
                 </h2>
                 <Badge>{chart_ideas.length}개</Badge>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 기술적 분석 기반 - 정해진 기간/목표 준수
               </p>
             </CardHeader>
@@ -419,12 +419,12 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  관심 종목 <span className="text-blue-600">(Watching)</span>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  관심 종목 <span className="text-blue-600 dark:text-blue-400">(Watching)</span>
                 </h2>
                 <Badge variant="info">{watching_ideas.length}개</Badge>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 포지션 진입 전 관찰 중인 아이디어
               </p>
             </CardHeader>
