@@ -1,0 +1,143 @@
+{
+  "2차전지": {
+    "etfs": [
+      {"code": "305720", "name": "KODEX 2차전지산업", "is_primary": true},
+      {"code": "305540", "name": "TIGER 2차전지테마", "is_primary": false}
+    ],
+    "related_themes": ["리튬", "전기차", "2차전지(나트륨이온)"]
+  },
+  "반도체": {
+    "etfs": [
+      {"code": "091160", "name": "KODEX 반도체", "is_primary": true},
+      {"code": "091230", "name": "TIGER 반도체", "is_primary": false},
+      {"code": "488770", "name": "KODEX AI반도체핵심장비", "is_primary": false}
+    ],
+    "related_themes": ["시스템반도체", "반도체 장비", "HBM(고대역폭메모리)"]
+  },
+  "바이오": {
+    "etfs": [
+      {"code": "244580", "name": "KODEX 바이오", "is_primary": true},
+      {"code": "227540", "name": "TIGER 바이오TOP10", "is_primary": false}
+    ],
+    "related_themes": ["제약", "치매", "mRNA(메신저 리보핵산)", "의료AI"]
+  },
+  "자동차": {
+    "etfs": [
+      {"code": "091180", "name": "KODEX 자동차", "is_primary": true}
+    ],
+    "related_themes": ["자동차 대표주", "자동차부품", "전기차"]
+  },
+  "조선": {
+    "etfs": [
+      {"code": "466920", "name": "TIGER 조선TOP10", "is_primary": true}
+    ],
+    "related_themes": ["조선", "조선기자재"]
+  },
+  "방산": {
+    "etfs": [
+      {"code": "463250", "name": "TIGER K방산&우주", "is_primary": true},
+      {"code": "449450", "name": "PLUS K방산", "is_primary": false}
+    ],
+    "related_themes": ["방위산업", "우주항공"]
+  },
+  "원자력": {
+    "etfs": [
+      {"code": "433500", "name": "ACE 원자력TOP10", "is_primary": true},
+      {"code": "434730", "name": "HANARO 원자력iSelect", "is_primary": false}
+    ],
+    "related_themes": ["원자력발전", "SMR(소형모듈원자로)"]
+  },
+  "신재생에너지": {
+    "etfs": [
+      {"code": "292190", "name": "KODEX K-신재생에너지액티브", "is_primary": true}
+    ],
+    "related_themes": ["태양광에너지", "풍력에너지", "수소경제"]
+  },
+  "로봇": {
+    "etfs": [
+      {"code": "445290", "name": "KODEX 로봇액티브", "is_primary": true},
+      {"code": "469070", "name": "RISE AI&로봇", "is_primary": false}
+    ],
+    "related_themes": ["로봇(산업용/협동로봇 등)", "자율주행차"]
+  },
+  "은행": {
+    "etfs": [
+      {"code": "091170", "name": "KODEX 은행", "is_primary": true}
+    ],
+    "related_themes": ["은행", "금융"]
+  },
+  "증권": {
+    "etfs": [
+      {"code": "102970", "name": "KODEX 증권", "is_primary": true}
+    ],
+    "related_themes": ["증권"]
+  },
+  "보험": {
+    "etfs": [
+      {"code": "140710", "name": "KODEX 보험", "is_primary": true}
+    ],
+    "related_themes": ["보험"]
+  },
+  "건설": {
+    "etfs": [
+      {"code": "117700", "name": "KODEX 건설", "is_primary": true}
+    ],
+    "related_themes": ["건설", "건자재"]
+  },
+  "철강": {
+    "etfs": [
+      {"code": "117680", "name": "KODEX 철강", "is_primary": true}
+    ],
+    "related_themes": ["철강 주요종목"]
+  },
+  "화학": {
+    "etfs": [
+      {"code": "117690", "name": "KODEX 화학", "is_primary": true}
+    ],
+    "related_themes": ["정밀화학", "석유화학"]
+  },
+  "게임": {
+    "etfs": [
+      {"code": "396510", "name": "TIGER 게임K-뉴딜", "is_primary": true}
+    ],
+    "related_themes": ["게임", "메타버스"]
+  },
+  "미디어": {
+    "etfs": [
+      {"code": "266360", "name": "KODEX 미디어&엔터테인먼트", "is_primary": true}
+    ],
+    "related_themes": ["엔터테인먼트", "OTT(온라인동영상서비스)"]
+  },
+  "헬스케어": {
+    "etfs": [
+      {"code": "266420", "name": "KODEX 헬스케어", "is_primary": true}
+    ],
+    "related_themes": ["의료기기", "헬스케어"]
+  },
+  "IT": {
+    "etfs": [
+      {"code": "266370", "name": "KODEX IT", "is_primary": true},
+      {"code": "139260", "name": "TIGER 200 IT", "is_primary": false}
+    ],
+    "related_themes": ["IT 대표주", "소프트웨어"]
+  },
+  "전력설비": {
+    "etfs": [
+      {"code": "487240", "name": "KODEX AI전력핵심설비", "is_primary": true},
+      {"code": "491820", "name": "HANARO 전력설비투자", "is_primary": false}
+    ],
+    "related_themes": ["전력설비", "스마트그리드(지능형전력망)"]
+  },
+  "코스닥": {
+    "etfs": [
+      {"code": "229200", "name": "KODEX 코스닥150", "is_primary": true}
+    ],
+    "related_themes": []
+  },
+  "코스피": {
+    "etfs": [
+      {"code": "069500", "name": "KODEX 200", "is_primary": true}
+    ],
+    "related_themes": []
+  }
+}
