@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+**/.env
+**/backend/.env
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Coverage
+coverage/
+.coverage
+htmlcov/
+
+# Sensitive files
+.kis_token.json
+*.session
+uploads/
+*.jpg
+*.png
+*.jpeg
+.pytest_cache/
+.claude/
