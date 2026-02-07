@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useIdeaStore } from '../../store/useIdeaStore'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
+import { mentionsApi, themeSetupApi, dataApi } from '../../services/api'
+import type { TrendingMentionItem } from '../../services/api'
+import type { PriceData } from '../../types/data'
 import type { IdeaSummary } from '../../types/idea'
+import { useMarketStatus } from '../../hooks/useMarketStatus'
+import { useRealtimePolling } from '../../hooks/useRealtimePolling'
 
 type ViewMode = 'card' | 'list'
 
@@ -283,20 +288,84 @@ export default function Dashboard() {
     const saved = localStorage.getItem('dashboard-view-mode')
     return (saved as ViewMode) || 'card'
   })
+  const [convergence, setConvergence] = useState<TrendingMentionItem[]>([])
+  const [topTheme, setTopTheme] = useState<string | null>(null)
+  const [livePrices, setLivePrices] = useState<Record<string, PriceData>>({})
+  const { isMarketOpen } = useMarketStatus()
 
   useEffect(() => {
     fetchDashboard()
+    // 시장 시그널 로드
+    mentionsApi.getConvergence(7, 2).then(setConvergence).catch(() => {})
+    themeSetupApi.getEmerging(1, 30).then(res => {
+      if (res.themes?.length > 0) setTopTheme(res.themes[0].theme_name)
+    }).catch(() => {})
   }, [fetchDashboard])
+
+  // 보유 포지션 종목코드 추출
+  const positionStockCodes = useMemo(() => {
+    if (!dashboard) return []
+    const codes = new Set<string>()
+    const allIdeas = [...dashboard.research_ideas, ...dashboard.chart_ideas]
+    for (const idea of allIdeas) {
+      for (const pos of idea.positions) {
+        if (pos.is_open && pos.ticker) {
+          codes.add(pos.ticker)
+        }
+      }
+    }
+    return Array.from(codes)
+  }, [dashboard])
+
+  // 실시간 가격 조회
+  const fetchLivePrices = useCallback(async () => {
+    if (positionStockCodes.length === 0) return
+    try {
+      const prices = await dataApi.getMultiplePrices(positionStockCodes)
+      setLivePrices(prices)
+    } catch {
+      // 조용히 실패
+    }
+  }, [positionStockCodes])
+
+  // 초기 로드
+  useEffect(() => {
+    fetchLivePrices()
+  }, [fetchLivePrices])
+
+  // 장중 30초 자동 갱신
+  useRealtimePolling(fetchLivePrices, 30_000, { onlyMarketHours: true, enabled: positionStockCodes.length > 0 })
 
   useEffect(() => {
     localStorage.setItem('dashboard-view-mode', viewMode)
   }, [viewMode])
+
+  // 실시간 미실현 손익 재계산 (훅은 early return 전에 호출해야 함)
+  const liveUnrealizedReturn = useMemo(() => {
+    if (!dashboard || Object.keys(livePrices).length === 0) return null
+    let totalReturn = 0
+    const allIdeas = [...dashboard.research_ideas, ...dashboard.chart_ideas]
+    for (const idea of allIdeas) {
+      for (const pos of idea.positions) {
+        if (!pos.is_open) continue
+        const live = livePrices[pos.ticker]
+        if (live) {
+          const currentPrice = Number(live.current_price)
+          totalReturn += (currentPrice - Number(pos.entry_price)) * pos.quantity
+        } else if (pos.unrealized_profit != null) {
+          totalReturn += Number(pos.unrealized_profit)
+        }
+      }
+    }
+    return totalReturn
+  }, [livePrices, dashboard])
 
   if (loading) return <div className="text-center py-10 text-gray-600 dark:text-gray-300">로딩 중...</div>
   if (error) return <div className="text-center py-10 text-red-600 dark:text-red-400">{error}</div>
   if (!dashboard) return <div className="text-center py-10 text-gray-600 dark:text-gray-300">데이터가 없습니다.</div>
 
   const { stats, research_ideas, chart_ideas, watching_ideas } = dashboard
+  const displayUnrealized = liveUnrealizedReturn ?? Number(stats.total_unrealized_return)
 
   return (
     <div>
@@ -304,6 +373,46 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">대시보드</h1>
         <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
       </div>
+
+      {/* 시장 시그널 (교차 언급 + 핫 테마) */}
+      {(convergence.length > 0 || topTheme) && (
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          {convergence.length > 0 && (
+            <Card>
+              <CardContent>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">교차 시그널</span>
+                  <Badge variant="danger" size="sm">{convergence.length}종목</Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {convergence.slice(0, 8).map(item => (
+                    <Link key={item.stock_code} to={`/stocks/${item.stock_code}`}>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                        <span className="font-medium">{item.stock_name || item.stock_code}</span>
+                        <span className="text-xs text-red-500 dark:text-red-400">{item.source_count}src/{item.total_mentions}</span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {topTheme && (
+            <Card>
+              <CardContent>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">오늘의 신흥 테마</span>
+                </div>
+                <Link to={`/emerging/${encodeURIComponent(topTheme)}`}>
+                  <span className="text-lg font-bold text-primary-600 dark:text-primary-400 hover:underline">
+                    {topTheme}
+                  </span>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* 첫 번째 줄: 아이디어 관련 */}
       <div className="grid gap-4 md:grid-cols-3 mb-4">
@@ -339,12 +448,18 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500 dark:text-gray-400">미실현 손익</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-gray-500 dark:text-gray-400">미실현 손익</span>
+              {liveUnrealizedReturn != null && (
+                <span className="text-xs text-green-600 dark:text-green-400">LIVE</span>
+              )}
+              {!isMarketOpen && <span className="text-xs text-gray-400 dark:text-gray-500">(장마감)</span>}
+            </div>
             <div className={`text-3xl font-bold ${
-              Number(stats.total_unrealized_return) >= 0 ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'
+              displayUnrealized >= 0 ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'
             }`}>
-              {Number(stats.total_unrealized_return) >= 0 ? '+' : ''}
-              {Math.round(Number(stats.total_unrealized_return)).toLocaleString()}원
+              {displayUnrealized >= 0 ? '+' : ''}
+              {Math.round(displayUnrealized).toLocaleString()}원
             </div>
           </CardContent>
         </Card>
@@ -365,6 +480,51 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 보유 종목 실시간 시세 */}
+      {positionStockCodes.length > 0 && Object.keys(livePrices).length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">보유 종목 실시간</h2>
+            {isMarketOpen && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                LIVE
+              </span>
+            )}
+            {!isMarketOpen && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">(장마감)</span>
+            )}
+          </div>
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {positionStockCodes.map(code => {
+              const price = livePrices[code]
+              if (!price) return null
+              const isUp = Number(price.change_rate) >= 0
+              return (
+                <Link key={code} to={`/stocks/${code}`}>
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {price.stock_name || code}
+                      </span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{code}</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {Number(price.current_price).toLocaleString()}
+                      </span>
+                      <span className={`text-sm font-medium ${isUp ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                        {isUp ? '+' : ''}{Number(price.change_rate).toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div>

@@ -1,15 +1,12 @@
 """투자자 수급 데이터 수집 작업."""
-import json
 import logging
 from datetime import datetime
-from pathlib import Path
 
 from core.database import async_session_maker
 from services.investor_flow_service import InvestorFlowService
+from services.theme_map_service import get_theme_map_service
 
 logger = logging.getLogger(__name__)
-
-THEME_MAP_PATH = Path(__file__).parent.parent.parent / "data" / "theme_map.json"
 
 
 async def collect_investor_flow() -> dict:
@@ -28,17 +25,9 @@ async def collect_investor_flow() -> dict:
     }
 
     # 테마맵에서 모든 종목 코드 추출
-    try:
-        with open(THEME_MAP_PATH, "r", encoding="utf-8") as f:
-            theme_map = json.load(f)
-    except Exception as e:
-        logger.error(f"Failed to load theme map: {e}")
-        result["error"] = str(e)
-        return result
-
-    # 모든 종목 코드와 이름 수집
+    tms = get_theme_map_service()
     all_stocks = {}
-    for stocks in theme_map.values():
+    for stocks in tms.get_all_themes().values():
         for stock in stocks:
             code = stock.get("code")
             name = stock.get("name", "")

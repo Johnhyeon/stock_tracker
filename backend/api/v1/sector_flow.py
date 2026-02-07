@@ -1,9 +1,7 @@
 """섹터별 거래대금/수급 분석 API."""
 import asyncio
-import json
 import logging
 from datetime import datetime, date, timedelta
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -12,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_async_db
 from integrations.kis.client import get_kis_client
+from services.theme_map_service import get_theme_map_service
 
 router = APIRouter(prefix="/sector-flow", tags=["sector-flow"])
 logger = logging.getLogger(__name__)
@@ -31,27 +30,12 @@ def _get_exclude_condition() -> str:
 
 def _load_theme_map() -> dict[str, list[dict]]:
     """테마 맵 로드 (테마명 -> 종목 리스트)."""
-    theme_map_path = Path(__file__).parent.parent.parent / "data" / "theme_map.json"
-    try:
-        with open(theme_map_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error(f"테마 맵 로드 실패: {e}")
-        return {}
+    return get_theme_map_service().get_all_themes()
 
 
 def _load_stock_theme_map() -> dict[str, list[str]]:
     """종목코드별 속한 테마 리스트 반환."""
-    theme_map = _load_theme_map()
-    stock_themes: dict[str, list[str]] = {}
-    for theme_name, stocks in theme_map.items():
-        for stock in stocks:
-            code = stock.get("code")
-            if code:
-                if code not in stock_themes:
-                    stock_themes[code] = []
-                stock_themes[code].append(theme_name)
-    return stock_themes
+    return get_theme_map_service().get_stock_theme_map()
 
 
 # 주요 섹터 그룹 정의 (테마맵 기반 확장)

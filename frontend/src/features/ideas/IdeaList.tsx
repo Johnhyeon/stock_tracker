@@ -1,12 +1,25 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useIdeaStore } from '../../store/useIdeaStore'
 import { Card, CardContent } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Select from '../../components/ui/Select'
+import TelegramIdeaList from './TelegramIdeaList'
 import type { Idea, IdeaStatus, IdeaType } from '../../types/idea'
 
+// Lazy load heavy components
+const UnifiedIdeaList = lazy(() => import('./views/UnifiedIdeaList'))
+const IdeaAnalytics = lazy(() => import('./views/IdeaAnalytics'))
+
 type ViewMode = 'card' | 'list'
+type TabType = 'unified' | 'manual' | 'telegram' | 'analytics'
+
+const TAB_LABELS: Record<TabType, string> = {
+  unified: '통합',
+  manual: '수동',
+  telegram: '텔레그램',
+  analytics: '분석',
+}
 
 const statusLabels: Record<IdeaStatus, string> = {
   active: '활성',
@@ -76,11 +89,11 @@ function ViewModeToggle({
   onChange: (mode: ViewMode) => void
 }) {
   return (
-    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
       <button
         onClick={() => onChange('card')}
         className={`p-1.5 rounded transition-colors ${
-          viewMode === 'card' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500 hover:text-gray-700'
+          viewMode === 'card' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
         }`}
         title="카드 보기"
       >
@@ -91,7 +104,7 @@ function ViewModeToggle({
       <button
         onClick={() => onChange('list')}
         className={`p-1.5 rounded transition-colors ${
-          viewMode === 'list' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500 hover:text-gray-700'
+          viewMode === 'list' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
         }`}
         title="목록 보기"
       >
@@ -120,16 +133,16 @@ function IdeaCard({ idea }: { idea: Idea }) {
           </div>
 
           <div className="mb-2">
-            <span className="text-sm text-gray-500">종목:</span>
-            <span className="ml-2 font-medium">
+            <span className="text-sm text-gray-500 dark:text-gray-400">종목:</span>
+            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
               {idea.tickers.join(', ') || '-'}
             </span>
           </div>
 
           {idea.sector && (
             <div className="mb-2">
-              <span className="text-sm text-gray-500">섹터:</span>
-              <span className="ml-2">{idea.sector}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">섹터:</span>
+              <span className="ml-2 text-gray-900 dark:text-gray-100">{idea.sector}</span>
             </div>
           )}
 
@@ -146,16 +159,16 @@ function IdeaCard({ idea }: { idea: Idea }) {
             </div>
           )}
 
-          <p className="text-sm text-gray-700 line-clamp-3 mb-3">
+          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 mb-3">
             {textContent || idea.thesis}
           </p>
 
-          <div className="flex justify-between items-center text-sm text-gray-500">
+          <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
             <span>목표: {Number(idea.target_return_pct)}%</span>
             <span>기간: {idea.expected_timeframe_days}일</span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
             <Badge variant={idea.status === 'active' ? 'success' : 'default'}>
               {statusLabels[idea.status]}
             </Badge>
@@ -173,7 +186,7 @@ function IdeaListItem({ idea }: { idea: Idea }) {
 
   return (
     <Link to={`/ideas/${idea.id}`}>
-      <div className="flex gap-4 p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+      <div className="flex gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
         {images.length > 0 && (
           <div className="flex-shrink-0">
             <img
@@ -192,11 +205,11 @@ function IdeaListItem({ idea }: { idea: Idea }) {
             <Badge variant={idea.type === 'research' ? 'info' : 'default'} size="sm">
               {typeLabels[idea.type]}
             </Badge>
-            <span className="font-semibold text-base truncate">
+            <span className="font-semibold text-base truncate text-gray-900 dark:text-gray-100">
               {idea.tickers.join(', ') || '종목 미지정'}
             </span>
             {idea.sector && (
-              <span className="text-xs text-gray-500">({idea.sector})</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">({idea.sector})</span>
             )}
             {healthBadge(idea.fundamental_health, 'sm')}
             <Badge variant={idea.status === 'active' ? 'success' : 'default'} size="sm">
@@ -204,12 +217,12 @@ function IdeaListItem({ idea }: { idea: Idea }) {
             </Badge>
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-1 mb-2">{textContent || idea.thesis}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1 mb-2">{textContent || idea.thesis}</p>
 
-          <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
             <span>목표: {Number(idea.target_return_pct)}%</span>
             <span>기간: {idea.expected_timeframe_days}일</span>
-            <span className="text-gray-400">
+            <span className="text-gray-400 dark:text-gray-500">
               {new Date(idea.created_at).toLocaleDateString()}
             </span>
           </div>
@@ -219,7 +232,8 @@ function IdeaListItem({ idea }: { idea: Idea }) {
   )
 }
 
-export default function IdeaList() {
+// 수동 아이디어 목록 (기존)
+function ManualIdeaList() {
   const { ideas, loading, error, fetchIdeas } = useIdeaStore()
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [filterType, setFilterType] = useState<string>('')
@@ -240,43 +254,40 @@ export default function IdeaList() {
   }, [viewMode])
 
   if (loading) {
-    return <div className="text-center py-10">로딩 중...</div>
+    return <div className="text-center py-10 text-gray-500 dark:text-gray-400">로딩 중...</div>
   }
 
   if (error) {
-    return <div className="text-center py-10 text-red-600">{error}</div>
+    return <div className="text-center py-10 text-red-600 dark:text-red-400">{error}</div>
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">아이디어 목록</h1>
-        <div className="flex items-center gap-4">
-          <Select
-            options={[
-              { value: '', label: '모든 상태' },
-              { value: 'active', label: '활성' },
-              { value: 'watching', label: '관찰' },
-              { value: 'exited', label: '청산' },
-            ]}
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          />
-          <Select
-            options={[
-              { value: '', label: '모든 유형' },
-              { value: 'research', label: '리서치' },
-              { value: 'chart', label: '차트' },
-            ]}
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          />
-          <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
-        </div>
+      <div className="flex items-center gap-4 mb-6">
+        <Select
+          options={[
+            { value: '', label: '모든 상태' },
+            { value: 'active', label: '활성' },
+            { value: 'watching', label: '관찰' },
+            { value: 'exited', label: '청산' },
+          ]}
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        />
+        <Select
+          options={[
+            { value: '', label: '모든 유형' },
+            { value: 'research', label: '리서치' },
+            { value: 'chart', label: '차트' },
+          ]}
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        />
+        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
       </div>
 
       {ideas.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
+        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
           아이디어가 없습니다. 새로운 아이디어를 추가해보세요.
         </div>
       ) : viewMode === 'card' ? (
@@ -292,6 +303,90 @@ export default function IdeaList() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// 탭 컴포넌트
+function Tab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+        active
+          ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
+          : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+// 로딩 스피너
+function LoadingSpinner() {
+  return (
+    <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+      로딩 중...
+    </div>
+  )
+}
+
+export default function IdeaList() {
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // URL에서 탭 상태 읽기
+  const activeTab = useMemo<TabType>(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['unified', 'manual', 'telegram', 'analytics'].includes(tabParam)) {
+      return tabParam as TabType
+    }
+    // localStorage fallback
+    const saved = localStorage.getItem('idea-list-active-tab')
+    if (saved && ['unified', 'manual', 'telegram', 'analytics'].includes(saved)) {
+      return saved as TabType
+    }
+    return 'unified'
+  }, [searchParams])
+
+  const setActiveTab = (tab: TabType) => {
+    setSearchParams({ tab })
+    localStorage.setItem('idea-list-active-tab', tab)
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">아이디어</h1>
+      </div>
+
+      {/* 탭 */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+        {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
+          <Tab
+            key={tab}
+            label={TAB_LABELS[tab]}
+            active={activeTab === tab}
+            onClick={() => setActiveTab(tab)}
+          />
+        ))}
+      </div>
+
+      {/* 탭 내용 */}
+      <Suspense fallback={<LoadingSpinner />}>
+        {activeTab === 'unified' && <UnifiedIdeaList />}
+        {activeTab === 'manual' && <ManualIdeaList />}
+        {activeTab === 'telegram' && <TelegramIdeaList showSourceFilter />}
+        {activeTab === 'analytics' && <IdeaAnalytics />}
+      </Suspense>
     </div>
   )
 }

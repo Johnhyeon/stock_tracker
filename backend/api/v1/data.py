@@ -16,6 +16,24 @@ from schemas.data import (
 router = APIRouter()
 
 
+@router.get("/market-index")
+async def get_market_index():
+    """코스피/코스닥 시장 지수 조회.
+
+    2분 캐시 적용.
+    """
+    price_service = get_price_service()
+
+    try:
+        data = await price_service.get_market_indices()
+        return data
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"시장 지수 조회 실패: {str(e)}"
+        )
+
+
 @router.get("/price/{stock_code}", response_model=PriceResponse)
 async def get_current_price(
     stock_code: str,

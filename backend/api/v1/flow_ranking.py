@@ -1,17 +1,21 @@
 """수급 랭킹 API 엔드포인트."""
 import asyncio
-import json
 import logging
+from collections import defaultdict
 from datetime import datetime, date
-from pathlib import Path
 from typing import Optional
 
+from cachetools import TTLCache
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_async_db
 from integrations.kis.client import get_kis_client
+from services.theme_map_service import get_theme_map_service
+
+# 서버사이드 캐시 (5분 TTL)
+_consecutive_cache = TTLCache(maxsize=32, ttl=300)
 
 router = APIRouter(prefix="/flow-ranking", tags=["flow-ranking"])
 logger = logging.getLogger(__name__)
@@ -29,24 +33,9 @@ def _get_exclude_condition() -> str:
     return " AND ".join(conditions)
 
 
-# 테마 맵 로드 (종목코드 -> 테마 리스트)
 def _load_stock_theme_map() -> dict[str, list[str]]:
     """종목코드별 속한 테마 리스트 반환."""
-    theme_map_path = Path(__file__).parent.parent.parent / "data" / "theme_map.json"
-    stock_themes: dict[str, list[str]] = {}
-    try:
-        with open(theme_map_path, "r", encoding="utf-8") as f:
-            theme_map = json.load(f)
-        for theme_name, stocks in theme_map.items():
-            for stock in stocks:
-                code = stock.get("code")
-                if code:
-                    if code not in stock_themes:
-                        stock_themes[code] = []
-                    stock_themes[code].append(theme_name)
-    except Exception:
-        pass
-    return stock_themes
+    return get_theme_map_service().get_stock_theme_map()
 
 
 @router.get("/top")
@@ -230,41 +219,42 @@ async def get_consecutive_buy_stocks(
     """연속 순매수 종목 조회.
 
     최근 N일 연속 순매수 중인 종목을 반환합니다.
+    벌크 쿼리 1회로 전체 데이터를 가져온 후 Python에서 연속일수 계산.
     """
-    # 최근 데이터부터 연속 순매수 일수 계산 (간소화된 버전)
-    # CURRENT_DATE 대신 MAX(flow_date)를 기준으로 사용 (휴일/주말에도 최신 거래일 데이터 표시)
+    # 서버사이드 캐시 확인
+    cache_key = f"{min_days}:{investor_type}:{limit}"
+    if cache_key in _consecutive_cache:
+        return _consecutive_cache[cache_key]
+
     exclude_cond = _get_exclude_condition()
+
+    # 1회 벌크 쿼리: 최근 30일 전체 수급 데이터
     query = text(f"""
-        SELECT DISTINCT stock_code, stock_name
+        SELECT stock_code, stock_name, flow_date,
+               foreign_net, institution_net, individual_net,
+               foreign_net_amount, institution_net_amount, individual_net_amount
         FROM stock_investor_flows
         WHERE flow_date >= (SELECT MAX(flow_date) - INTERVAL '30 days' FROM stock_investor_flows)
             AND {exclude_cond}
+        ORDER BY stock_code, flow_date DESC
     """)
 
     result = await db.execute(query)
-    all_stocks = result.fetchall()
+    all_rows = result.fetchall()
 
-    # 각 종목별 연속 순매수 일수 계산
+    # 종목별로 그룹핑
+    from collections import defaultdict
+    stock_flows = defaultdict(list)
+    stock_names = {}
+    for row in all_rows:
+        stock_flows[row.stock_code].append(row)
+        stock_names[row.stock_code] = row.stock_name
+
+    # 각 종목별 연속 순매수 일수 계산 (Python에서)
     stock_themes = _load_stock_theme_map()
     stocks = []
 
-    for stock in all_stocks:
-        # 해당 종목의 최근 데이터 조회 (금액 필드 포함)
-        flow_query = text(f"""
-            SELECT flow_date, foreign_net, institution_net, individual_net,
-                   foreign_net_amount, institution_net_amount, individual_net_amount
-            FROM stock_investor_flows
-            WHERE stock_code = :code
-            ORDER BY flow_date DESC
-            LIMIT 30
-        """)
-        flow_result = await db.execute(flow_query, {"code": stock.stock_code})
-        flows = flow_result.fetchall()
-
-        if not flows:
-            continue
-
-        # 연속 순매수 일수 계산
+    for code, flows in stock_flows.items():
         consecutive = 0
         foreign_sum = 0
         institution_sum = 0
@@ -274,7 +264,6 @@ async def get_consecutive_buy_stocks(
         individual_amount_sum = 0
 
         for flow in flows:
-            # 금액 기준으로 순매수 판단
             if investor_type == "foreign":
                 is_buy = (flow.foreign_net_amount or 0) > 0
             elif investor_type == "institution":
@@ -297,8 +286,8 @@ async def get_consecutive_buy_stocks(
 
         if consecutive >= min_days:
             stocks.append({
-                "stock_code": stock.stock_code,
-                "stock_name": stock.stock_name,
+                "stock_code": code,
+                "stock_name": stock_names[code],
                 "consecutive_days": consecutive,
                 "foreign_sum": int(foreign_sum),
                 "institution_sum": int(institution_sum),
@@ -307,19 +296,21 @@ async def get_consecutive_buy_stocks(
                 "institution_amount_sum": int(institution_amount_sum),
                 "individual_amount_sum": int(individual_amount_sum),
                 "total_amount_sum": int(foreign_amount_sum + institution_amount_sum),
-                "themes": stock_themes.get(stock.stock_code, []),
+                "themes": stock_themes.get(code, []),
             })
 
-    # 연속 일수 및 금액 기준 정렬 (금액 기준으로 변경)
+    # 연속 일수 및 금액 기준 정렬
     stocks.sort(key=lambda x: (x["consecutive_days"], x["total_amount_sum"]), reverse=True)
 
-    return {
+    result = {
         "stocks": stocks[:limit],
         "count": len(stocks[:limit]),
         "min_days": min_days,
         "investor_type": investor_type,
         "generated_at": datetime.now().isoformat(),
     }
+    _consecutive_cache[cache_key] = result
+    return result
 
 
 @router.get("/spike")

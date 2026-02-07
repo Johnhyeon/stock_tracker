@@ -70,35 +70,24 @@ class NewsCollectorService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.settings = get_settings()
-        self._theme_map: dict[str, list[dict]] = {}
+        self._tms = get_theme_map_service()
         self._theme_keywords: dict[str, list[str]] = {}
         self._naver_client: Optional[NaverSearchClient] = None
         self._rss_client: Optional[RSSClient] = None
-        self._load_theme_map()
+        self._build_keywords()
 
-    def _load_theme_map(self):
-        """테마 맵 로드 및 검색 키워드 생성."""
-        try:
-            with open(THEME_MAP_PATH, "r", encoding="utf-8") as f:
-                self._theme_map = json.load(f)
-
-            # 테마별 검색 키워드 생성
-            for theme_name, stocks in self._theme_map.items():
-                keywords = [theme_name]  # 테마명 자체
-                # 테마명에서 괄호 안의 영문명 추출
-                if "(" in theme_name and ")" in theme_name:
-                    match = re.search(r'\(([^)]+)\)', theme_name)
-                    if match:
-                        keywords.append(match.group(1))
-                # 대표 종목명 추가 (상위 3개)
-                for stock in stocks[:3]:
-                    if stock.get("name"):
-                        keywords.append(stock["name"])
-                self._theme_keywords[theme_name] = keywords
-
-            logger.info(f"Loaded {len(self._theme_map)} themes for news collection")
-        except Exception as e:
-            logger.error(f"Failed to load theme map: {e}")
+    def _build_keywords(self):
+        """테마별 검색 키워드 생성."""
+        for theme_name, stocks in self._tms.get_all_themes().items():
+            keywords = [theme_name]
+            if "(" in theme_name and ")" in theme_name:
+                match = re.search(r'\(([^)]+)\)', theme_name)
+                if match:
+                    keywords.append(match.group(1))
+            for stock in stocks[:3]:
+                if stock.get("name"):
+                    keywords.append(stock["name"])
+            self._theme_keywords[theme_name] = keywords
 
     def _get_naver_client(self) -> Optional[NaverSearchClient]:
         """네이버 검색 API 클라이언트 반환."""
@@ -149,7 +138,7 @@ class NewsCollectorService:
     def _get_themes_for_stocks(self, stock_codes: set[str]) -> set[str]:
         """종목 코드들이 속한 테마 목록 반환."""
         themes = set()
-        for theme_name, stocks in self._theme_map.items():
+        for theme_name, stocks in self._tms.get_all_themes().items():
             theme_codes = {s.get("code") for s in stocks if s.get("code")}
             if theme_codes & stock_codes:  # 교집합이 있으면
                 themes.add(theme_name)
@@ -174,7 +163,7 @@ class NewsCollectorService:
             logger.warning("네이버 클라이언트 없이 뉴스 수집 스킵")
             return 0
 
-        themes = theme_names or list(self._theme_map.keys())
+        themes = theme_names or self._tms.get_theme_names()
         saved_count = 0
 
         for theme_name in themes:
@@ -371,7 +360,7 @@ class NewsCollectorService:
             }
 
         target_themes = self._get_themes_for_stocks(mentioned_codes)
-        logger.info(f"뉴스 수집 대상 테마: {len(target_themes)}개 (전체 {len(self._theme_map)}개 중)")
+        logger.info(f"뉴스 수집 대상 테마: {len(target_themes)}개 (전체 {self._tms.theme_count()}개 중)")
 
         # theme_names가 지정되면 교집합 사용
         if theme_names:

@@ -90,8 +90,12 @@ export default function EmergingThemes() {
     setLoading(true)
     setError(null)
     try {
-      const result = await themeSetupApi.getEmerging(30, minScore)
+      const [result, trendResult] = await Promise.all([
+        themeSetupApi.getEmerging(30, minScore),
+        themeSetupApi.getRankTrend(14, 10),
+      ])
       setData(result)
+      setRankTrend(trendResult)
     } catch (err) {
       setError('테마 셋업 데이터를 불러오는데 실패했습니다.')
       console.error(err)

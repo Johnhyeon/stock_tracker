@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { useDarkMode } from '../hooks/useDarkMode'
+
+const MarketOverview = lazy(() => import('./MarketOverview'))
 
 interface LayoutProps {
   children: React.ReactNode
@@ -138,7 +140,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+          <div className="flex justify-between h-14">
             <div className="flex">
               <Link to="/" className="flex items-center">
                 <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
@@ -147,22 +149,25 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
               <div className="hidden sm:ml-8 sm:flex sm:items-center sm:space-x-2">
                 {/* 메인 메뉴 */}
-                {mainNavItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={clsx(
-                      'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                      location.pathname === item.path
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                {/* 수급 드롭다운 */}
-                <DropdownMenu label="수급" items={flowMenuItems} />
+                {mainNavItems.map((item) => {
+                  const isActive = item.path === '/'
+                    ? location.pathname === '/'
+                    : location.pathname.startsWith(item.path)
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={clsx(
+                        'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                        isActive
+                          ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
+                          : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                })}
                 {/* 드롭다운 메뉴 */}
                 {dropdownMenus.map((menu) => (
                   <DropdownMenu key={menu.label} label={menu.label} items={menu.items} />
@@ -185,6 +190,12 @@ export default function Layout({ children }: LayoutProps) {
                 + 새 아이디어
               </Link>
             </div>
+          </div>
+          {/* 마켓 오버뷰 */}
+          <div className="hidden sm:flex items-center h-8 -mt-1">
+            <Suspense fallback={null}>
+              <MarketOverview />
+            </Suspense>
           </div>
         </div>
       </nav>

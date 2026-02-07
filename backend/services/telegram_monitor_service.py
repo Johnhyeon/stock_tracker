@@ -33,57 +33,27 @@ class TelegramMonitorService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.settings = get_settings()
-        self._client = None
-        self._is_connected = False
 
     @property
     def is_configured(self) -> bool:
         """Telethon API가 설정되어 있는지 확인."""
-        return bool(
-            self.settings.telegram_api_id
-            and self.settings.telegram_api_hash
-        )
+        from integrations.telegram.telethon_client import is_telethon_configured
+        return is_telethon_configured()
 
     async def _get_client(self):
-        """Telethon 클라이언트 가져오기 (lazy initialization)."""
-        if not self.is_configured:
-            raise ValueError("Telegram API ID/Hash가 설정되지 않았습니다.")
-
-        if self._client is None:
-            try:
-                from telethon import TelegramClient
-                self._client = TelegramClient(
-                    self.settings.telegram_session_name,
-                    self.settings.telegram_api_id,
-                    self.settings.telegram_api_hash,
-                )
-            except ImportError:
-                raise ImportError("telethon 라이브러리가 설치되지 않았습니다. pip install telethon")
-
-        return self._client
+        """공유 Telethon 클라이언트 가져오기."""
+        from integrations.telegram.telethon_client import get_telethon_client
+        return await get_telethon_client()
 
     async def connect(self) -> bool:
         """텔레그램에 연결."""
-        if not self.is_configured:
-            logger.warning("Telegram API가 설정되지 않아 모니터링을 시작할 수 없습니다.")
-            return False
-
-        try:
-            client = await self._get_client()
-            await client.start()
-            self._is_connected = True
-            logger.info("텔레그램 모니터링 클라이언트 연결 성공")
-            return True
-        except Exception as e:
-            logger.error(f"텔레그램 연결 실패: {e}")
-            return False
+        from integrations.telegram.telethon_client import connect_telethon
+        return await connect_telethon()
 
     async def disconnect(self):
         """텔레그램 연결 해제."""
-        if self._client:
-            await self._client.disconnect()
-            self._is_connected = False
-            logger.info("텔레그램 모니터링 클라이언트 연결 해제")
+        from integrations.telegram.telethon_client import disconnect_telethon
+        await disconnect_telethon()
 
     async def get_active_keywords(self) -> dict[str, dict]:
         """활성 아이디어의 종목명 키워드 목록 조회.
@@ -171,7 +141,8 @@ class TelegramMonitorService:
 
     async def check_messages(self, limit: int = 100) -> list[TelegramKeywordMatch]:
         """모든 채널의 새 메시지를 확인하고 키워드 매칭."""
-        if not self._is_connected:
+        from integrations.telegram.telethon_client import is_connected
+        if not is_connected():
             connected = await self.connect()
             if not connected:
                 return []
@@ -389,7 +360,8 @@ class TelegramMonitorService:
 
     async def resolve_channel_by_username(self, username: str) -> Optional[dict]:
         """@username으로 채널 정보 조회."""
-        if not self._is_connected:
+        from integrations.telegram.telethon_client import is_connected
+        if not is_connected():
             connected = await self.connect()
             if not connected:
                 return None

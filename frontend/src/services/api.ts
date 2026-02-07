@@ -64,6 +64,8 @@ import type {
   SetupHistoryItem,
 } from '../types/theme_setup'
 
+import { cachedFetch } from './apiCache'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const api = axios.create({
@@ -143,8 +145,10 @@ export const positionApi = {
 
 export const dashboardApi = {
   get: async () => {
-    const { data } = await api.get<DashboardData>('/dashboard')
-    return data
+    return cachedFetch('dashboard', async () => {
+      const { data } = await api.get<DashboardData>('/dashboard')
+      return data
+    }, 30_000) // 30초 캐시
   },
 }
 
@@ -166,7 +170,30 @@ export const analysisApi = {
 }
 
 // Data API (가격 조회)
+export interface MarketIndexData {
+  index_code: string
+  index_name: string
+  current_value: number
+  change: number
+  change_rate: number
+  volume: number
+  trading_value: number
+}
+
+export interface MarketIndicesResponse {
+  kospi: MarketIndexData
+  kosdaq: MarketIndexData
+  updated_at: string
+}
+
 export const dataApi = {
+  getMarketIndex: async (): Promise<MarketIndicesResponse> => {
+    return cachedFetch('market-index', async () => {
+      const { data } = await api.get<MarketIndicesResponse>('/data/market-index')
+      return data
+    }, 60_000) // 1분 클라이언트 캐시
+  },
+
   getPrice: async (stockCode: string, useCache = true) => {
     const { data } = await api.get<PriceData>(`/data/price/${stockCode}`, {
       params: { use_cache: useCache },
@@ -565,10 +592,12 @@ export const themeSetupApi = {
 
   // 이머징 테마 목록 조회
   getEmerging: async (limit = 20, minScore = 30) => {
-    const { data } = await api.get<EmergingThemesResponse>('/theme-setup/emerging', {
-      params: { limit, min_score: minScore },
-    })
-    return data
+    return cachedFetch(`emerging:${limit}:${minScore}`, async () => {
+      const { data } = await api.get<EmergingThemesResponse>('/theme-setup/emerging', {
+        params: { limit, min_score: minScore },
+      })
+      return data
+    }, 120_000) // 2분 캐시
   },
 
   // 테마 셋업 상세 조회
@@ -685,25 +714,33 @@ export const themeSetupApi = {
 
   // 종목 OHLCV 데이터 조회 (차트용)
   getStockOHLCV: async (stockCode: string, days = 90, beforeDate?: string) => {
-    const params: Record<string, unknown> = { days }
-    if (beforeDate) {
-      params.before_date = beforeDate
+    const fetcher = async () => {
+      const params: Record<string, unknown> = { days }
+      if (beforeDate) {
+        params.before_date = beforeDate
+      }
+      const { data } = await api.get<{
+        stock_code: string
+        candles: Array<{
+          time: number
+          open: number
+          high: number
+          low: number
+          close: number
+          volume: number
+        }>
+        count: number
+        has_more: boolean
+        oldest_date: number | null
+      }>(`/theme-setup/stock/${stockCode}/ohlcv`, { params })
+      return data
     }
-    const { data } = await api.get<{
-      stock_code: string
-      candles: Array<{
-        time: number
-        open: number
-        high: number
-        low: number
-        close: number
-        volume: number
-      }>
-      count: number
-      has_more: boolean
-      oldest_date: number | null
-    }>(`/theme-setup/stock/${stockCode}/ohlcv`, { params })
-    return data
+
+    // 초기 로드(beforeDate 없음)만 캐시, 스크롤 추가 로드는 캐시 안 함
+    if (!beforeDate) {
+      return cachedFetch(`ohlcv:${stockCode}:${days}`, fetcher, 300_000)
+    }
+    return fetcher()
   },
 }
 
@@ -781,16 +818,18 @@ export interface RealtimeSpikeResponse {
 export const flowRankingApi = {
   // 수급 상위 종목
   getTop: async (days = 5, limit = 30, investorType: 'all' | 'foreign' | 'institution' | 'individual' = 'all') => {
-    const { data } = await api.get<{
-      stocks: FlowRankingStock[]
-      count: number
-      days: number
-      investor_type: string
-      generated_at: string
-    }>('/flow-ranking/top', {
-      params: { days, limit, investor_type: investorType },
-    })
-    return data
+    return cachedFetch(`flow-top:${days}:${limit}:${investorType}`, async () => {
+      const { data } = await api.get<{
+        stocks: FlowRankingStock[]
+        count: number
+        days: number
+        investor_type: string
+        generated_at: string
+      }>('/flow-ranking/top', {
+        params: { days, limit, investor_type: investorType },
+      })
+      return data
+    }, 120_000) // 2분 캐시
   },
 
   // 수급 하위 종목 (순매도 상위)
@@ -809,16 +848,18 @@ export const flowRankingApi = {
 
   // 연속 순매수 종목
   getConsecutive: async (minDays = 3, limit = 30, investorType: 'all' | 'foreign' | 'institution' | 'individual' = 'all') => {
-    const { data } = await api.get<{
-      stocks: ConsecutiveStock[]
-      count: number
-      min_days: number
-      investor_type: string
-      generated_at: string
-    }>('/flow-ranking/consecutive', {
-      params: { min_days: minDays, limit, investor_type: investorType },
-    })
-    return data
+    return cachedFetch(`flow-consecutive:${minDays}:${limit}:${investorType}`, async () => {
+      const { data } = await api.get<{
+        stocks: ConsecutiveStock[]
+        count: number
+        min_days: number
+        investor_type: string
+        generated_at: string
+      }>('/flow-ranking/consecutive', {
+        params: { min_days: minDays, limit, investor_type: investorType },
+      })
+      return data
+    }, 120_000) // 2분 캐시
   },
 
   // 수급 급증 종목
@@ -884,6 +925,8 @@ import type {
 } from '../types/telegram'
 
 // Data Status API (데이터 상태 확인 및 새로고침)
+import type { AllDataStatusResponse } from '../types/data_status'
+
 export interface DataStatusItem {
   name: string
   last_updated: string | null
@@ -910,9 +953,15 @@ export interface RefreshStatus {
 }
 
 export const dataStatusApi = {
-  // 데이터 상태 조회
+  // 기존 데이터 상태 조회 (하위 호환성)
   getStatus: async () => {
     const { data } = await api.get<DataStatusResponse>('/data-status/status')
+    return data
+  },
+
+  // 전체 데이터 상태 조회 (신규 - 카테고리별 그룹화)
+  getAllStatus: async () => {
+    const { data } = await api.get<AllDataStatusResponse>('/data-status/status/all')
     return data
   },
 

@@ -1,7 +1,5 @@
 """차트 패턴 감지 서비스."""
-import json
 import logging
-from pathlib import Path
 from datetime import datetime, date, timedelta
 from typing import Optional
 from dataclasses import dataclass
@@ -13,10 +11,9 @@ from sqlalchemy.dialects.postgresql import insert
 
 from models import ThemeChartPattern, ChartPatternType, YouTubeMention, TraderMention, StockOHLCV
 from services.price_service import get_price_service
+from services.theme_map_service import get_theme_map_service
 
 logger = logging.getLogger(__name__)
-
-THEME_MAP_PATH = Path(__file__).parent.parent / "data" / "theme_map.json"
 
 
 @dataclass
@@ -50,17 +47,7 @@ class ChartPatternService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.price_service = get_price_service()
-        self._theme_map: dict[str, list[dict]] = {}
-        self._load_theme_map()
-
-    def _load_theme_map(self):
-        """테마 맵 로드."""
-        try:
-            with open(THEME_MAP_PATH, "r", encoding="utf-8") as f:
-                self._theme_map = json.load(f)
-            logger.info(f"Loaded {len(self._theme_map)} themes for chart analysis")
-        except Exception as e:
-            logger.error(f"Failed to load theme map: {e}")
+        self._tms = get_theme_map_service()
 
     async def _get_ohlcv_data(
         self,
@@ -547,7 +534,7 @@ class ChartPatternService:
         theme_name: str,
     ) -> list[dict]:
         """테마 내 모든 종목의 차트 패턴 분석."""
-        stocks = self._theme_map.get(theme_name, [])
+        stocks = self._tms.get_stocks_in_theme(theme_name)
         results = []
 
         for stock in stocks:
@@ -602,7 +589,7 @@ class ChartPatternService:
     def _get_themes_for_stocks(self, stock_codes: set[str]) -> set[str]:
         """종목 코드들이 속한 테마 목록 반환."""
         themes = set()
-        for theme_name, stocks in self._theme_map.items():
+        for theme_name, stocks in self._tms.get_all_themes().items():
             theme_codes = {s.get("code") for s in stocks if s.get("code")}
             if theme_codes & stock_codes:  # 교집합이 있으면
                 themes.add(theme_name)
@@ -643,7 +630,7 @@ class ChartPatternService:
 
         # 2. 언급된 종목이 속한 테마만 선별
         target_themes = self._get_themes_for_stocks(mentioned_codes)
-        logger.info(f"분석 대상 테마: {len(target_themes)}개 (전체 {len(self._theme_map)}개 중)")
+        logger.info(f"분석 대상 테마: {len(target_themes)}개 (전체 {self._tms.theme_count()}개 중)")
 
         # 3. 분석 대상 종목의 기존 패턴만 삭제 (전체 삭제 X)
         # 오늘 날짜 + 분석 대상 종목만 삭제
@@ -660,7 +647,7 @@ class ChartPatternService:
         # 4. 선별된 테마만 분석 (언급된 종목만)
         for theme_name in target_themes:
             try:
-                stocks = self._theme_map.get(theme_name, [])
+                stocks = self._tms.get_stocks_in_theme(theme_name)
                 # 테마 내에서 언급된 종목만 분석
                 mentioned_in_theme = [
                     s for s in stocks
@@ -816,7 +803,7 @@ class ChartPatternService:
                 "patterns": list,
             }
         """
-        stocks = self._theme_map.get(theme_name, [])
+        stocks = self._tms.get_stocks_in_theme(theme_name)
         total_stocks = len(stocks)
 
         if total_stocks == 0:

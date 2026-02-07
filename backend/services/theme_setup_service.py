@@ -100,7 +100,7 @@ class ThemeSetupService:
 
         YouTube와 트레이더 언급 데이터 기반.
         """
-        stocks = self._theme_map.get(theme_name, [])
+        stocks = self._tms.get_stocks_in_theme(theme_name)
         stock_codes = [s["code"] for s in stocks if s.get("code")]
 
         if not stock_codes:
@@ -255,7 +255,7 @@ class ThemeSetupService:
         7일 평균 등락률 + 거래량 변화.
         주말/공휴일에는 DB의 최근 거래일 데이터 사용.
         """
-        stocks = self._theme_map.get(theme_name, [])
+        stocks = self._tms.get_stocks_in_theme(theme_name)
         if not stocks:
             return {"score": 0, "avg_change": 0, "volume_change": 0}
 
@@ -311,7 +311,7 @@ class ThemeSetupService:
 
         외국인/기관 순매수 데이터 기반.
         """
-        stocks = self._theme_map.get(theme_name, [])
+        stocks = self._tms.get_stocks_in_theme(theme_name)
         stock_codes = [s["code"] for s in stocks if s.get("code")]
 
         if not stock_codes:
@@ -390,7 +390,7 @@ class ThemeSetupService:
         setup_date = date.today()
         results = []
 
-        for theme_name in self._theme_map.keys():
+        for theme_name in self._tms.get_theme_names():
             try:
                 score_data = await self.calculate_setup_score(theme_name)
                 results.append(score_data)
@@ -426,7 +426,7 @@ class ThemeSetupService:
                 total_setup_score=data["total_score"],
                 score_breakdown=data["score_breakdown"],
                 top_stocks=top_stocks,
-                total_stocks_in_theme=len(self._theme_map.get(theme_name, [])),
+                total_stocks_in_theme=len(self._tms.get_stocks_in_theme(theme_name)),
                 stocks_with_pattern=data["score_breakdown"]["chart"].get("pattern_count", 0),
                 is_emerging=is_emerging,
             ).on_conflict_do_update(
@@ -738,3 +738,99 @@ class ThemeSetupService:
             }
             for s in setups
         ]
+
+    async def get_rank_trend(
+        self,
+        days: int = 14,
+        top_n: int = 10,
+    ) -> dict:
+        """상위 테마들의 순위 추이 조회.
+
+        Args:
+            days: 조회 기간 (일)
+            top_n: 조회할 테마 수 (최근 기준 상위 N개)
+
+        Returns:
+            {
+                "dates": ["2026-01-22", "2026-01-23", ...],
+                "themes": [
+                    {
+                        "name": "테마명",
+                        "data": [
+                            {"date": "2026-01-22", "rank": 1, "score": 75.5},
+                            ...
+                        ]
+                    },
+                    ...
+                ]
+            }
+        """
+        start_date = date.today() - timedelta(days=days)
+
+        # 1. 가장 최근 날짜의 상위 N개 테마 조회
+        latest_date_stmt = select(func.max(ThemeSetup.setup_date))
+        latest_date_result = await self.db.execute(latest_date_stmt)
+        latest_date = latest_date_result.scalar()
+
+        if not latest_date:
+            return {"dates": [], "themes": []}
+
+        top_themes_stmt = (
+            select(ThemeSetup.theme_name)
+            .where(ThemeSetup.setup_date == latest_date)
+            .order_by(ThemeSetup.rank)
+            .limit(top_n)
+        )
+        top_themes_result = await self.db.execute(top_themes_stmt)
+        top_theme_names = [row[0] for row in top_themes_result]
+
+        if not top_theme_names:
+            return {"dates": [], "themes": []}
+
+        # 2. 해당 테마들의 전체 기간 데이터 조회
+        stmt = (
+            select(ThemeSetup)
+            .where(
+                and_(
+                    ThemeSetup.theme_name.in_(top_theme_names),
+                    ThemeSetup.setup_date >= start_date,
+                )
+            )
+            .order_by(ThemeSetup.setup_date, ThemeSetup.rank)
+        )
+        result = await self.db.execute(stmt)
+        setups = result.scalars().all()
+
+        # 3. 날짜 목록 생성
+        dates_set = set()
+        for s in setups:
+            dates_set.add(s.setup_date)
+        dates = sorted(dates_set)
+
+        # 4. 테마별 데이터 정리
+        theme_data = {name: {} for name in top_theme_names}
+        for s in setups:
+            theme_data[s.theme_name][s.setup_date] = {
+                "date": s.setup_date.isoformat(),
+                "rank": s.rank,
+                "score": round(s.total_setup_score, 1),
+            }
+
+        # 5. 결과 포맷팅
+        themes = []
+        for name in top_theme_names:
+            data = []
+            for d in dates:
+                if d in theme_data[name]:
+                    data.append(theme_data[name][d])
+                else:
+                    data.append({"date": d.isoformat(), "rank": None, "score": None})
+            themes.append({
+                "name": name,
+                "data": data,
+            })
+
+        return {
+            "dates": [d.isoformat() for d in dates],
+            "themes": themes,
+        }

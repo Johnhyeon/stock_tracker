@@ -44,6 +44,48 @@ class KISClient(BaseAPIClient):
         headers["authorization"] = f"Bearer {token}"
         return headers
 
+    async def get_market_index(self, index_code: str) -> dict:
+        """업종(시장) 지수 현재가 조회.
+
+        Args:
+            index_code: 업종 코드 ("0001": 코스피, "1001": 코스닥)
+
+        Returns:
+            {
+                "index_code": "0001",
+                "index_name": "코스피",
+                "current_value": Decimal("2650.50"),
+                "change": Decimal("-12.30"),
+                "change_rate": Decimal("-0.46"),
+                "volume": 456789012,
+                "trading_value": 7890000000000,
+            }
+        """
+        headers = await self._get_auth_headers()
+        headers["tr_id"] = "FHPUP02100000"  # 업종현재가 시세
+
+        params = {
+            "FID_COND_MRKT_DIV_CODE": "U",  # 업종
+            "FID_INPUT_ISCD": index_code,
+        }
+
+        data = await self.get(
+            "/uapi/domestic-stock/v1/quotations/inquire-index-price",
+            params=params,
+            headers=headers,
+        )
+
+        output = data.get("output", {})
+        return {
+            "index_code": index_code,
+            "index_name": output.get("hts_kor_isnm", ""),
+            "current_value": Decimal(output.get("bstp_nmix_prpr", "0")),
+            "change": Decimal(output.get("bstp_nmix_prdy_vrss", "0")),
+            "change_rate": Decimal(output.get("bstp_nmix_prdy_ctrt", "0")),
+            "volume": int(output.get("acml_vol", "0")),
+            "trading_value": int(output.get("acml_tr_pbmn", "0")),
+        }
+
     async def get_current_price(self, stock_code: str) -> dict:
         """주식 현재가 조회.
 

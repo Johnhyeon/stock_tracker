@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import { sectorFlowApi, SectorFlowItem, SectorTreemapItem, SectorStockItem, RealtimeSectorFlowItem } from '../../services/api'
+import { sectorFlowApi, SectorFlowItem, SectorTreemapItem, SectorStockItem, RealtimeSectorFlowItem, themeSetupApi } from '../../services/api'
 import { Card } from '../../components/ui/Card'
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts'
+import { StockChart } from '../../components/StockChart'
 
 type ViewMode = 'table' | 'treemap'
 type DataMode = 'realtime' | 'history'

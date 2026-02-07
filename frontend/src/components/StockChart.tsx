@@ -55,14 +55,110 @@ function StockChartComponent({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [chartReady, setChartReady] = useState(false)
 
   // 스크롤 로딩용 상태
   const allCandlesRef = useRef<OHLCVCandle[]>([])
   const hasMoreRef = useRef(true)
   const isLoadingMoreRef = useRef(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersApiRef = useRef<any>(null)
 
   // TradingView 링크 (한국어)
   const tradingViewUrl = `https://kr.tradingview.com/chart/?symbol=KRX:${stockCode}`
+
+  // 마커 생성 함수
+  const updateMarkers = (candleSeries: ISeriesApi<'Candlestick'>, candles: OHLCVCandle[], showIdea: boolean) => {
+    const candleTimes = candles.map(c => c.time)
+    const minTime = Math.min(...candleTimes)
+    const maxTime = Math.max(...candleTimes)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allMarkers: any[] = []
+
+    // 매수 지점 마커
+    if (entryMarkers && entryMarkers.length > 0) {
+      entryMarkers.forEach(marker => {
+        const timestamp = new Date(marker.date).getTime() / 1000
+        if (timestamp >= minTime && timestamp <= maxTime) {
+          allMarkers.push({
+            time: (timestamp + KST_TO_UTC) as UTCTimestamp,
+            position: 'belowBar' as const,
+            color: '#16a34a',
+            shape: 'arrowUp' as const,
+            text: `매수 ${marker.price.toLocaleString()}원`,
+          })
+        }
+      })
+    }
+
+    // 아이디어 언급 마커 (showIdea가 true일 때만)
+    if (showIdea && ideaMarkers && ideaMarkers.length > 0) {
+      const timestampToDate = new Map<string, number>()
+      candles.forEach(c => {
+        const d = new Date(c.time * 1000)
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const dateStr = `${year}-${month}-${day}`
+        timestampToDate.set(dateStr, c.time + KST_TO_UTC)
+      })
+
+      const groupedByDate = new Map<string, IdeaMarker[]>()
+      ideaMarkers.forEach(marker => {
+        const existing = groupedByDate.get(marker.date) || []
+        existing.push(marker)
+        groupedByDate.set(marker.date, existing)
+      })
+
+      groupedByDate.forEach((markers, date) => {
+        const candleTime = timestampToDate.get(date)
+        if (candleTime === undefined) return
+
+        const hasMy = markers.some(m => m.source === 'my')
+        const othersMarkers = markers.filter(m => m.source === 'others')
+        const othersCount = othersMarkers.length
+
+        if (hasMy) {
+          allMarkers.push({
+            time: candleTime as UTCTimestamp,
+            position: 'aboveBar' as const,
+            color: '#f59e0b',
+            shape: 'circle' as const,
+            text: '💡',
+          })
+        }
+
+        if (othersCount > 0) {
+          let text = ''
+          if (othersCount === 1) {
+            text = othersMarkers[0].author || '💬'
+          } else {
+            const firstName = othersMarkers[0].author || '💬'
+            text = `${firstName} +${othersCount - 1}`
+          }
+
+          allMarkers.push({
+            time: candleTime as UTCTimestamp,
+            position: 'aboveBar' as const,
+            color: '#8b5cf6',
+            shape: 'circle' as const,
+            text,
+          })
+        }
+      })
+    }
+
+    // 마커 정렬
+    allMarkers.sort((a, b) => a.time - b.time)
+
+    // 기존 마커 API가 있으면 setMarkers로 업데이트, 없으면 새로 생성
+    if (markersApiRef.current) {
+      markersApiRef.current.setMarkers(allMarkers as SeriesMarker<Time>[])
+    } else {
+      markersApiRef.current = createSeriesMarkers(candleSeries, allMarkers as SeriesMarker<Time>[])
+    }
+  }
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -139,18 +235,18 @@ function StockChartComponent({
 
     // 차트 데이터 업데이트 함수
     const updateChartData = (candles: OHLCVCandle[]) => {
-      // 캔들 데이터 변환
+      // 캔들 데이터 변환 (KST→UTC 보정)
       const candleData = candles.map((c: OHLCVCandle) => ({
-        time: c.time as UTCTimestamp,
+        time: (c.time + KST_TO_UTC) as UTCTimestamp,
         open: c.open,
         high: c.high,
         low: c.low,
         close: c.close,
       }))
 
-      // 거래량 데이터 변환
+      // 거래량 데이터 변환 (KST→UTC 보정)
       const volumeData = candles.map((c: OHLCVCandle) => ({
-        time: c.time as UTCTimestamp,
+        time: (c.time + KST_TO_UTC) as UTCTimestamp,
         value: c.volume,
         color: c.close >= c.open ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)',
       }))
@@ -163,7 +259,7 @@ function StockChartComponent({
       for (let i = 59; i < candles.length; i++) {
         const sum = candles.slice(i - 59, i + 1).reduce((acc, c) => acc + c.close, 0)
         ma60Data.push({
-          time: candles[i].time as UTCTimestamp,
+          time: (candles[i].time + KST_TO_UTC) as UTCTimestamp,
           value: sum / 60,
         })
       }
@@ -366,7 +462,63 @@ function StockChartComponent({
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange)
 
-    loadData()
+    // 오늘 실시간 봉 업데이트 함수
+    const updateLiveCandle = async () => {
+      if (isDisposed || !candleSeriesRef.current || !volumeSeriesRef.current) return
+      try {
+        const price = await dataApi.getPrice(stockCode, false) // 캐시 안 씀
+        if (isDisposed || !price) return
+
+        // KST 기준 오늘 날짜 → UTC 자정 timestamp (차트 표시용)
+        const now = new Date()
+        const kstOffset = 9 * 60 * 60 * 1000
+        const kstNow = new Date(now.getTime() + kstOffset)
+        const todayTimestamp = Math.floor(
+          Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()) / 1000
+        ) as UTCTimestamp
+
+        const open = Number(price.open_price)
+        const high = Number(price.high_price)
+        const low = Number(price.low_price)
+        const close = Number(price.current_price)
+        const vol = Number(price.volume)
+
+        if (close <= 0) return // 유효하지 않은 데이터 무시
+
+        candleSeriesRef.current.update({
+          time: todayTimestamp,
+          open, high, low, close,
+        })
+        volumeSeriesRef.current.update({
+          time: todayTimestamp,
+          value: vol,
+          color: close >= open ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)',
+        })
+      } catch {
+        // 조용히 실패
+      }
+    }
+
+    loadData().then(() => {
+      // OHLCV 로드 완료 후 오늘 캔들 1회 조회
+      if (!isDisposed && !ohlcvData) {
+        updateLiveCandle()
+      }
+      // 차트 준비 완료
+      if (!isDisposed) {
+        setChartReady(true)
+      }
+    })
+
+    // 장중 60초 폴링
+    let liveCandleTimer: ReturnType<typeof setInterval> | null = null
+    if (!ohlcvData) {
+      liveCandleTimer = setInterval(() => {
+        if (isMarketOpen()) {
+          updateLiveCandle()
+        }
+      }, 60_000)
+    }
 
     // 리사이즈 핸들러
     const handleResize = () => {
@@ -455,6 +607,17 @@ function StockChartComponent({
           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
             <div className="text-red-400 text-sm">{error}</div>
           </div>
+        )}
+        {/* 드로잉 오버레이 */}
+        {enableDrawing && chartReady && chartRef.current && candleSeriesRef.current && (
+          <ChartDrawings
+            stockCode={stockCode}
+            chart={chartRef.current}
+            series={candleSeriesRef.current}
+            containerRef={containerRef as React.RefObject<HTMLDivElement>}
+            height={height}
+            enabled={enableDrawing}
+          />
         )}
       </div>
     </div>

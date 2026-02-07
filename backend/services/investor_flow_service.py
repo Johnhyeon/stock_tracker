@@ -201,6 +201,8 @@ class InvestorFlowService:
     ) -> dict:
         """테마 내 종목들의 수급 현황 조회.
 
+        당일 데이터가 없으면 가장 최근 거래일 데이터를 사용합니다.
+
         Args:
             stock_codes: 종목코드 리스트
             days: 조회 기간 (일)
@@ -213,8 +215,11 @@ class InvestorFlowService:
                 "positive_institution": int, # 기관 순매수 종목 수
                 "total_stocks": int,        # 전체 종목 수
                 "avg_flow_score": float,    # 평균 수급 점수
+                "data_date": str | None,   # 데이터 기준일
             }
         """
+        from sqlalchemy import func
+
         if not stock_codes:
             return {
                 "foreign_net_sum": 0,
@@ -223,6 +228,7 @@ class InvestorFlowService:
                 "positive_institution": 0,
                 "total_stocks": 0,
                 "avg_flow_score": 0,
+                "data_date": None,
             }
 
         start_date = date.today() - timedelta(days=days)
@@ -240,6 +246,33 @@ class InvestorFlowService:
         result = await self.db.execute(stmt)
         flows = result.scalars().all()
 
+        # 당일 기준 데이터가 없으면 DB의 가장 최신 데이터로 fallback
+        if not flows:
+            # 해당 종목들의 가장 최신 수급 데이터 날짜 찾기
+            latest_stmt = (
+                select(func.max(StockInvestorFlow.flow_date))
+                .where(StockInvestorFlow.stock_code.in_(stock_codes))
+            )
+            latest_result = await self.db.execute(latest_stmt)
+            latest_date = latest_result.scalar()
+
+            if latest_date:
+                # 최신 날짜 기준으로 다시 조회 (최근 days일)
+                fallback_start = latest_date - timedelta(days=days)
+                stmt = (
+                    select(StockInvestorFlow)
+                    .where(
+                        and_(
+                            StockInvestorFlow.stock_code.in_(stock_codes),
+                            StockInvestorFlow.flow_date >= fallback_start,
+                        )
+                    )
+                )
+                result = await self.db.execute(stmt)
+                flows = result.scalars().all()
+                if flows:
+                    logger.info(f"당일 수급 데이터 없음, 이전 거래일({latest_date}) 데이터 사용")
+
         if not flows:
             return {
                 "foreign_net_sum": 0,
@@ -248,6 +281,7 @@ class InvestorFlowService:
                 "positive_institution": 0,
                 "total_stocks": len(stock_codes),
                 "avg_flow_score": 0,
+                "data_date": None,
             }
 
         # 종목별로 최신 데이터만 사용
@@ -255,6 +289,9 @@ class InvestorFlowService:
         for f in flows:
             if f.stock_code not in latest_flows or f.flow_date > latest_flows[f.stock_code].flow_date:
                 latest_flows[f.stock_code] = f
+
+        # 데이터 기준일 (가장 최신)
+        data_date = max(f.flow_date for f in latest_flows.values()) if latest_flows else None
 
         foreign_net_sum = sum(f.foreign_net for f in latest_flows.values())
         institution_net_sum = sum(f.institution_net for f in latest_flows.values())
@@ -269,6 +306,7 @@ class InvestorFlowService:
             "positive_institution": positive_institution,
             "total_stocks": len(stock_codes),
             "avg_flow_score": round(avg_flow_score, 1),
+            "data_date": data_date.isoformat() if data_date else None,
         }
 
     async def calculate_theme_flow_score(
@@ -359,6 +397,8 @@ class InvestorFlowService:
     ) -> list[dict]:
         """테마 내 종목들의 개별 수급 데이터 조회.
 
+        당일 데이터가 없으면 가장 최근 거래일 데이터를 사용합니다.
+
         Args:
             stock_codes: 종목코드 리스트
             days: 조회 기간 (일)
@@ -366,6 +406,8 @@ class InvestorFlowService:
         Returns:
             개별 종목별 수급 데이터 리스트
         """
+        from sqlalchemy import func
+
         if not stock_codes:
             return []
 
@@ -384,6 +426,32 @@ class InvestorFlowService:
 
         result = await self.db.execute(stmt)
         flows = result.scalars().all()
+
+        # 당일 기준 데이터가 없으면 DB의 가장 최신 데이터로 fallback
+        if not flows:
+            # 해당 종목들의 가장 최신 수급 데이터 날짜 찾기
+            latest_stmt = (
+                select(func.max(StockInvestorFlow.flow_date))
+                .where(StockInvestorFlow.stock_code.in_(stock_codes))
+            )
+            latest_result = await self.db.execute(latest_stmt)
+            latest_date = latest_result.scalar()
+
+            if latest_date:
+                # 최신 날짜 기준으로 다시 조회 (최근 days일)
+                fallback_start = latest_date - timedelta(days=days)
+                stmt = (
+                    select(StockInvestorFlow)
+                    .where(
+                        and_(
+                            StockInvestorFlow.stock_code.in_(stock_codes),
+                            StockInvestorFlow.flow_date >= fallback_start,
+                        )
+                    )
+                    .order_by(StockInvestorFlow.flow_date.desc())
+                )
+                result = await self.db.execute(stmt)
+                flows = result.scalars().all()
 
         if not flows:
             return []

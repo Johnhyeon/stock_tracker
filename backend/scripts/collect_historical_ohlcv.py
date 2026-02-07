@@ -3,11 +3,9 @@
 실행: cd backend && python scripts/collect_historical_ohlcv.py
 """
 import asyncio
-import json
 import sys
 import os
 from datetime import datetime, timedelta, date
-from pathlib import Path
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,16 +16,14 @@ from core.database import async_session_maker
 from models.stock_ohlcv import StockOHLCV
 
 
-THEME_MAP_PATH = Path(__file__).parent.parent / "data" / "theme_map.json"
+from services.theme_map_service import get_theme_map_service
 
 
 def load_theme_stocks() -> dict[str, str]:
     """테마맵에서 종목코드 -> 종목명 딕셔너리 로드."""
-    with open(THEME_MAP_PATH, "r", encoding="utf-8") as f:
-        theme_map = json.load(f)
-
+    tms = get_theme_map_service()
     stocks = {}
-    for theme_stocks in theme_map.values():
+    for theme_stocks in tms.get_all_themes().values():
         for stock_info in theme_stocks:
             code = stock_info.get("code")
             name = stock_info.get("name", "")

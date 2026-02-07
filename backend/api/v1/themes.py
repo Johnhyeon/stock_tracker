@@ -89,28 +89,37 @@ def get_theme_rotation(
 
 
 @router.get("/list", response_model=list[ThemeListItem])
-def get_theme_list(
-    db: Session = Depends(get_db),
-):
+def get_theme_list():
     """전체 테마 목록.
 
     네이버 증권에서 수집한 265개 테마 목록을 반환합니다.
     """
-    theme_service = ThemeService(db)
-    return theme_service.get_all_themes()
+    tms = get_theme_map_service()
+    return [
+        {"name": name, "stock_count": len(stocks)}
+        for name, stocks in tms.get_all_themes().items()
+    ]
 
 
 @router.get("/search", response_model=list[ThemeSearchResult])
 def search_themes(
     q: str = Query(..., min_length=1, description="검색어"),
-    db: Session = Depends(get_db),
 ):
     """테마 검색.
 
     테마명에 검색어가 포함된 테마를 찾습니다.
     """
-    theme_service = ThemeService(db)
-    return theme_service.search_themes(q)
+    tms = get_theme_map_service()
+    query = q.lower()
+    results = []
+    for name, stocks in tms.get_all_themes().items():
+        if query in name.lower():
+            results.append({
+                "name": name,
+                "stock_count": len(stocks),
+                "stocks": stocks[:5],
+            })
+    return results[:20]
 
 
 @router.get("/{theme_name}/stocks")
@@ -152,14 +161,13 @@ def get_theme_history(
 @router.get("/stock/{stock_code}/themes")
 def get_stock_themes(
     stock_code: str,
-    db: Session = Depends(get_db),
 ):
     """특정 종목이 속한 테마 목록.
 
     해당 종목이 어떤 테마에 속해있는지 확인합니다.
     """
-    theme_service = ThemeService(db)
-    themes = theme_service.get_themes_for_stock(stock_code)
+    tms = get_theme_map_service()
+    themes = tms.get_themes_for_stock(stock_code)
 
     return {
         "stock_code": stock_code,

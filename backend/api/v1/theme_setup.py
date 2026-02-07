@@ -201,7 +201,7 @@ async def collect_investor_flow(
     언급된 종목들의 외국인/기관 순매수 데이터를 수집합니다.
     """
     import json
-    from pathlib import Path
+    from services.theme_map_service import get_theme_map_service
 
     status_manager = get_collection_status()
 
@@ -209,16 +209,9 @@ async def collect_investor_flow(
         raise HTTPException(status_code=409, detail="수급 수집이 이미 진행 중입니다.")
 
     # 테마맵에서 모든 종목 코드 추출
-    theme_map_path = Path(__file__).parent.parent.parent / "data" / "theme_map.json"
-    try:
-        with open(theme_map_path, "r", encoding="utf-8") as f:
-            theme_map = json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load theme map: {e}")
-
-    # 모든 종목 코드와 이름 수집
+    tms = get_theme_map_service()
     all_stocks = {}
-    for stocks in theme_map.values():
+    for stocks in tms.get_all_themes().values():
         for stock in stocks:
             code = stock.get("code")
             name = stock.get("name", "")
@@ -368,3 +361,34 @@ async def get_stock_ohlcv(
         "has_more": has_more,
         "oldest_date": oldest_date,
     }
+
+
+@router.get("/rank-trend")
+async def get_rank_trend(
+    days: int = Query(default=14, ge=1, le=30),
+    top_n: int = Query(default=10, ge=1, le=20),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """상위 테마들의 순위 추이 조회.
+
+    최근 기준 상위 N개 테마의 일별 순위/점수 변화를 반환합니다.
+    라인 차트 시각화에 적합한 형태로 데이터를 제공합니다.
+
+    Args:
+        days: 조회 기간 (기본 14일, 최대 30일)
+        top_n: 조회할 테마 수 (기본 10개, 최대 20개)
+
+    Returns:
+        {
+            "dates": ["2026-01-22", ...],
+            "themes": [
+                {
+                    "name": "테마명",
+                    "data": [{"date": "...", "rank": 1, "score": 75.5}, ...]
+                },
+                ...
+            ]
+        }
+    """
+    service = ThemeSetupService(db)
+    return await service.get_rank_trend(days=days, top_n=top_n)

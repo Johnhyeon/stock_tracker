@@ -46,6 +46,7 @@ class PriceService:
         self.kis_client = kis_client or get_kis_client()
         self._price_cache = PriceCache(ttl_seconds=60)  # 현재가 1분 캐시
         self._ohlcv_cache = PriceCache(ttl_seconds=300)  # OHLCV 5분 캐시
+        self._index_cache = PriceCache(ttl_seconds=120)  # 시장 지수 2분 캐시
 
     async def get_current_price(
         self,
@@ -166,10 +167,42 @@ class PriceService:
             logger.error(f"Failed to fetch OHLCV for {stock_code}: {e}")
             raise
 
+    async def get_market_indices(self) -> dict:
+        """코스피/코스닥 시장 지수 조회.
+
+        Returns:
+            {
+                "kospi": {...},
+                "kosdaq": {...},
+                "updated_at": "...",
+            }
+        """
+        cache_key = "market_indices"
+        cached = await self._index_cache.get(cache_key)
+        if cached:
+            return cached
+
+        try:
+            kospi, kosdaq = await asyncio.gather(
+                self.kis_client.get_market_index("0001"),
+                self.kis_client.get_market_index("1001"),
+            )
+            result = {
+                "kospi": kospi,
+                "kosdaq": kosdaq,
+                "updated_at": datetime.now().isoformat(),
+            }
+            await self._index_cache.set(cache_key, result)
+            return result
+        except Exception as e:
+            logger.error(f"Failed to fetch market indices: {e}")
+            raise
+
     async def clear_cache(self) -> None:
         """캐시 초기화."""
         await self._price_cache.clear()
         await self._ohlcv_cache.clear()
+        await self._index_cache.clear()
 
 
 # 싱글톤 인스턴스

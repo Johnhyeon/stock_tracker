@@ -3,7 +3,7 @@ import { useDataStore } from '../../store/useDataStore'
 import { Card } from '../../components/ui/Card'
 import SchedulerStatus from './SchedulerStatus'
 import APIHealthCheck from './APIHealthCheck'
-import DataStatusPanel from './DataStatusPanel'
+import UnifiedDataDashboard from './UnifiedDataDashboard'
 
 export default function DataMonitor() {
   const {
@@ -22,10 +22,10 @@ export default function DataMonitor() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">데이터 모니터링</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">데이터 모니터링</h1>
 
-      {/* 데이터 상태 (새로고침 기능 포함) */}
-      <DataStatusPanel />
+      {/* 통합 데이터 수집 현황 (새로고침 기능 포함) */}
+      <UnifiedDataDashboard />
 
       {/* API 연결 상태 */}
       <APIHealthCheck />
