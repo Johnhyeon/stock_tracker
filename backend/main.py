@@ -71,7 +71,7 @@ app.include_router(data_status.router, prefix="/api/v1/data-status", tags=["data
 app.include_router(etf_rotation.router, prefix="/api/v1", tags=["etf-rotation"])
 app.include_router(sector_flow.router, prefix="/api/v1", tags=["sector-flow"])
 
-UPLOAD_DIR = Path("/home/hyeon/project/my_stock/uploads")
+UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 

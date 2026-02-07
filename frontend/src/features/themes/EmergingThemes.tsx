@@ -9,6 +9,10 @@ import { PATTERN_TYPE_LABELS, PATTERN_TYPE_COLORS } from '../../types/theme_setu
 export default function EmergingThemes() {
   const navigate = useNavigate()
   const [data, setData] = useState<EmergingThemesResponse | null>(null)
+  const [rankTrend, setRankTrend] = useState<{
+    dates: string[]
+    themes: Array<{ name: string; data: Array<{ date: string; rank: number; score: number }> }>
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [minScore, setMinScore] = useState(30)

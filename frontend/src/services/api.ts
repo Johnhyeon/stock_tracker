@@ -712,6 +712,20 @@ export const themeSetupApi = {
     return data
   },
 
+  // 상위 테마 순위 추이 조회
+  getRankTrend: async (days = 14, topN = 10) => {
+    const { data } = await api.get<{
+      dates: string[]
+      themes: Array<{
+        name: string
+        data: Array<{ date: string; rank: number; score: number }>
+      }>
+    }>('/theme-setup/rank-trend', {
+      params: { days, top_n: topN },
+    })
+    return data
+  },
+
   // 종목 OHLCV 데이터 조회 (차트용)
   getStockOHLCV: async (stockCode: string, days = 90, beforeDate?: string) => {
     const fetcher = async () => {
