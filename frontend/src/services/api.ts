@@ -1359,6 +1359,215 @@ export interface RealtimeSectorFlowResponse {
   generated_at: string
 }
 
+// 종목 프로필 API (통합 조회)
+export interface StockProfileData {
+  stock_code: string
+  stock_info: { code: string; name: string; market: string | null } | null
+  ohlcv: {
+    has_data: boolean
+    latest_price?: number
+    change_rate?: number
+    volume?: number
+    trade_date?: string
+    data_count?: number
+  }
+  investor_flow: {
+    has_data: boolean
+    days?: number
+    foreign_net_total?: number
+    institution_net_total?: number
+    consecutive_foreign_buy?: number
+    latest_date?: string
+  }
+  youtube_mentions: {
+    video_count: number
+    period_days: number
+    is_trending: boolean
+  }
+  trader_mentions: {
+    mention_count: number
+    total_mentions: number
+    period_days: number
+  }
+  disclosures: Array<{
+    title: string | null
+    date: string | null
+    type: string | null
+  }>
+  telegram_ideas: Array<{
+    message_text: string
+    author: string | null
+    date: string | null
+    source_type: string | null
+  }>
+  sentiment: {
+    analysis_count: number
+    avg_score: number
+    period_days: number
+  }
+  chart_patterns: Array<{
+    pattern_type: string | null
+    confidence: number | null
+    analysis_date: string | null
+  }>
+  themes: string[]
+}
+
+export interface TrendingMentionItem {
+  stock_code: string
+  stock_name: string
+  youtube_count: number
+  trader_count: number
+  telegram_count: number
+  total_mentions: number
+  source_count: number
+}
+
+export const stockProfileApi = {
+  getProfile: async (stockCode: string) => {
+    const { data } = await api.get<StockProfileData>(`/stocks/${stockCode}/profile`)
+    return data
+  },
+}
+
+export const mentionsApi = {
+  getTrending: async (days = 7, limit = 20) => {
+    const { data } = await api.get<TrendingMentionItem[]>('/mentions/trending', {
+      params: { days, limit },
+    })
+    return data
+  },
+
+  getConvergence: async (days = 7, minSources = 2) => {
+    const { data } = await api.get<TrendingMentionItem[]>('/mentions/convergence', {
+      params: { days, min_sources: minSources },
+    })
+    return data
+  },
+}
+
+// 텔레그램 아이디어 API
+export const telegramIdeaApi = {
+  list: async (params?: {
+    source?: string
+    days?: number
+    stock_code?: string
+    author?: string
+    sentiment?: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL'
+    limit?: number
+    offset?: number
+  }) => {
+    const { data } = await api.get('/telegram-ideas', { params })
+    return data
+  },
+
+  getStockStats: async (days = 30) => {
+    const { data } = await api.get('/telegram-ideas/stats/stocks', {
+      params: { days },
+    })
+    return data
+  },
+
+  getAuthorStats: async (days = 30) => {
+    const { data } = await api.get('/telegram-ideas/stats/authors', {
+      params: { days },
+    })
+    return data
+  },
+
+  collect: async (limit = 100) => {
+    const { data } = await api.post('/telegram-ideas/collect', null, {
+      params: { limit },
+    })
+    return data
+  },
+}
+
+// 매매 내역 API
+export interface TradeType {
+  BUY: 'BUY'
+  SELL: 'SELL'
+}
+
+export interface Trade {
+  id: string
+  stock_code: string
+  stock_name: string
+  trade_type: string
+  quantity: number
+  price: number
+  trade_date: string
+  position_id?: string
+  memo?: string
+}
+
+export interface TradeListResponse {
+  trades: Trade[]
+  count: number
+}
+
+export interface TradeSummary {
+  total_trades: number
+  total_buy_amount: number
+  total_sell_amount: number
+  realized_pnl: number
+  win_rate: number
+}
+
+export interface MonthlyTradeStats {
+  month: string
+  buy_count: number
+  sell_count: number
+  buy_amount: number
+  sell_amount: number
+  realized_pnl: number
+}
+
+export interface TickerTradeStats {
+  stock_code: string
+  stock_name: string
+  buy_count: number
+  sell_count: number
+  total_buy_amount: number
+  total_sell_amount: number
+  realized_pnl: number
+  avg_buy_price: number
+  avg_sell_price: number
+}
+
+export interface TradeAnalysisResponse {
+  summary: TradeSummary
+  monthly_stats: MonthlyTradeStats[]
+  ticker_stats: TickerTradeStats[]
+}
+
+export const tradeApi = {
+  list: async (params?: {
+    limit?: number
+    offset?: number
+    trade_type?: string
+    start_date?: string
+    end_date?: string
+  }) => {
+    const { data } = await api.get<TradeListResponse>('/trades', { params })
+    return data
+  },
+
+  getByPosition: async (positionId: string) => {
+    const { data } = await api.get<TradeListResponse>(`/trades/position/${positionId}`)
+    return data
+  },
+
+  getAnalysis: async () => {
+    const { data } = await api.get<TradeAnalysisResponse>('/trades/analysis')
+    return data
+  },
+
+  delete: async (tradeId: string) => {
+    await api.delete(`/trades/${tradeId}`)
+  },
+}
+
 export const sectorFlowApi = {
   // 섹터별 거래대금 현황
   getSummary: async () => {
