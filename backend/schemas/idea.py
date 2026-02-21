@@ -1,9 +1,17 @@
 from datetime import datetime, date
 from decimal import Decimal
 from uuid import UUID
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Annotated, Optional, List, Dict, Any
+from pydantic import BaseModel, BeforeValidator, Field
 from models.idea import IdeaType, IdeaStatus, FundamentalHealth
+
+
+def _to_int(v):
+    return round(v) if v is not None else None
+
+
+IntMoney = Annotated[int, BeforeValidator(_to_int)]
+OptIntMoney = Annotated[Optional[int], BeforeValidator(_to_int)]
 
 
 class IdeaCreate(BaseModel):
@@ -60,16 +68,16 @@ class PositionSummary(BaseModel):
     id: UUID
     ticker: str
     stock_name: Optional[str] = None
-    entry_price: Decimal
+    entry_price: IntMoney
     entry_date: Optional[date] = None
     quantity: int
-    exit_price: Optional[Decimal] = None
+    exit_price: OptIntMoney = None
     exit_date: Optional[date] = None
     exit_reason: Optional[str] = None
     days_held: int
     is_open: bool
-    current_price: Optional[Decimal] = None
-    unrealized_profit: Optional[float] = None
+    current_price: OptIntMoney = None
+    unrealized_profit: OptIntMoney = None
     unrealized_return_pct: Optional[float] = None
     realized_return_pct: Optional[float] = None
 
@@ -79,7 +87,7 @@ class PositionSummary(BaseModel):
 
 class IdeaWithPositions(IdeaResponse):
     positions: List[PositionSummary] = Field(default_factory=list)
-    total_invested: Optional[Decimal] = None
+    total_invested: OptIntMoney = None
     total_return_pct: Optional[float] = None
 
 

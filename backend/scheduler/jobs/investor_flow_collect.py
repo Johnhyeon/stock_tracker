@@ -1,14 +1,16 @@
 """투자자 수급 데이터 수집 작업."""
 import logging
-from datetime import datetime
 
 from core.database import async_session_maker
+from core.timezone import now_kst
 from services.investor_flow_service import InvestorFlowService
 from services.theme_map_service import get_theme_map_service
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("investor_flow_collect")
 async def collect_investor_flow() -> dict:
     """투자자 수급 데이터 수집 작업.
 
@@ -21,7 +23,7 @@ async def collect_investor_flow() -> dict:
     result = {
         "collected_count": 0,
         "failed_count": 0,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
     }
 
     # 테마맵에서 모든 종목 코드 추출

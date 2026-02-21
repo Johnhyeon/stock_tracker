@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from schemas import PositionExit, PositionAddBuy, PositionPartialExit, PositionResponse
+from schemas import PositionExit, PositionAddBuy, PositionPartialExit, PositionUpdate, PositionResponse
 from services import PositionService
 
 router = APIRouter()
@@ -13,6 +13,16 @@ router = APIRouter()
 def get_position(position_id: UUID, db: Session = Depends(get_db)):
     service = PositionService(db)
     position = service.get(position_id)
+    if not position:
+        raise HTTPException(status_code=404, detail="포지션을 찾을 수 없습니다.")
+    return position
+
+
+@router.put("/{position_id}", response_model=PositionResponse)
+def update_position(position_id: UUID, data: PositionUpdate, db: Session = Depends(get_db)):
+    """포지션 수정 (잘못 입력한 매매내역 수정)"""
+    service = PositionService(db)
+    position = service.update(position_id, data)
     if not position:
         raise HTTPException(status_code=404, detail="포지션을 찾을 수 없습니다.")
     return position

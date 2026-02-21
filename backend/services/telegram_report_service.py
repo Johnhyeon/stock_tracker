@@ -6,6 +6,8 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from sqlalchemy import select, and_, func, desc
+
+from core.timezone import now_kst
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
@@ -120,57 +122,99 @@ class TelegramReportService:
         total_collected = 0
         client = await self._get_telethon_client()
 
+        from telethon.tl.functions.messages import GetHistoryRequest
+        from telethon.tl.types import PeerChannel
+
+        # 엔티티 캐시 사전 로드 (세션에 없는 채널 resolve용)
+        _dialogs_loaded = False
+
         for channel in channels:
             try:
-                entity = await client.get_entity(channel.channel_id)
-                messages = await client.get_messages(
-                    entity,
-                    limit=limit,
-                    min_id=channel.last_message_id,
-                )
+                # 1순위: username으로 resolve
+                if channel.channel_username:
+                    try:
+                        entity = await client.get_input_entity(channel.channel_username)
+                    except ValueError:
+                        entity = None
+                else:
+                    entity = None
 
-                if not messages:
-                    continue
+                # 2순위: PeerChannel으로 명시적 지정
+                if entity is None:
+                    try:
+                        entity = await client.get_input_entity(PeerChannel(channel.channel_id))
+                    except ValueError:
+                        entity = None
+
+                # 3순위: dialogs 로드 후 재시도
+                if entity is None:
+                    if not _dialogs_loaded:
+                        logger.info("Loading dialogs to populate entity cache...")
+                        await client.get_dialogs()
+                        _dialogs_loaded = True
+                    entity = await client.get_input_entity(channel.channel_id)
 
                 max_message_id = channel.last_message_id
 
+                # Raw API로 메시지 가져오기 (엔티티 resolve 우회)
+                history = await client(GetHistoryRequest(
+                    peer=entity,
+                    offset_id=0,
+                    offset_date=None,
+                    add_offset=0,
+                    limit=limit,
+                    max_id=0,
+                    min_id=channel.last_message_id,
+                    hash=0,
+                ))
+
+                messages = history.messages
+                if not messages:
+                    continue
+
                 for msg in messages:
-                    if not msg.text:
+                    try:
+                        msg_text = getattr(msg, 'message', None)
+                        if not msg_text:
+                            continue
+
+                        max_message_id = max(max_message_id, msg.id)
+
+                        # 메시지 URL 생성 (공개 채널인 경우)
+                        message_url = None
+                        if channel.channel_username:
+                            message_url = f"https://t.me/{channel.channel_username}/{msg.id}"
+
+                        # 링크 및 종목 추출
+                        extracted_links = self._extract_links(msg_text)
+                        extracted_stocks = self._extract_stocks_by_pattern(msg_text)
+
+                        # timezone 제거 (naive datetime으로 변환)
+                        message_date = msg.date.replace(tzinfo=None) if msg.date.tzinfo else msg.date
+
+                        # UPSERT (중복 방지)
+                        stmt = insert(TelegramReport).values(
+                            channel_id=channel.channel_id,
+                            channel_name=channel.channel_name,
+                            message_id=msg.id,
+                            message_text=msg_text,
+                            message_date=message_date,
+                            message_url=message_url,
+                            extracted_links=extracted_links,
+                            extracted_stocks=extracted_stocks,
+                            extracted_themes=[],
+                            is_processed=False,
+                        ).on_conflict_do_nothing(
+                            index_elements=["channel_id", "message_id"]
+                        )
+
+                        result = await self.db.execute(stmt)
+                        if result.rowcount > 0:
+                            total_collected += 1
+
+                    except Exception as msg_err:
+                        logger.debug(f"메시지 처리 스킵 (id={msg.id}): {msg_err}")
                         continue
-
-                    max_message_id = max(max_message_id, msg.id)
-
-                    # 메시지 URL 생성 (공개 채널인 경우)
-                    message_url = None
-                    if channel.channel_username:
-                        message_url = f"https://t.me/{channel.channel_username}/{msg.id}"
-
-                    # 링크 및 종목 추출
-                    extracted_links = self._extract_links(msg.text)
-                    extracted_stocks = self._extract_stocks_by_pattern(msg.text)
-
-                    # timezone 제거 (naive datetime으로 변환)
-                    message_date = msg.date.replace(tzinfo=None) if msg.date.tzinfo else msg.date
-
-                    # UPSERT (중복 방지)
-                    stmt = insert(TelegramReport).values(
-                        channel_id=channel.channel_id,
-                        channel_name=channel.channel_name,
-                        message_id=msg.id,
-                        message_text=msg.text,
-                        message_date=message_date,
-                        message_url=message_url,
-                        extracted_links=extracted_links,
-                        extracted_stocks=extracted_stocks,
-                        extracted_themes=[],
-                        is_processed=False,
-                    ).on_conflict_do_nothing(
-                        index_elements=["channel_id", "message_id"]
-                    )
-
-                    result = await self.db.execute(stmt)
-                    if result.rowcount > 0:
-                        total_collected += 1
 
                 # 마지막 메시지 ID 업데이트
                 if max_message_id > channel.last_message_id:
@@ -431,7 +475,7 @@ class TelegramReportService:
         offset: int = 0,
     ) -> list[TelegramReport]:
         """리포트 목록 조회."""
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
 
         conditions = [TelegramReport.message_date >= since]
 
@@ -463,7 +507,7 @@ class TelegramReportService:
                 "generated_at": str
             }
         """
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
 
         # 긍정 종목 집계
         positive_stmt = (
@@ -557,7 +601,7 @@ class TelegramReportService:
             "negative_stocks": negative_stocks,
             "total_reports": total_reports_count,
             "total_sentiments": total_sentiments_count,
-            "generated_at": datetime.utcnow().isoformat()
+            "generated_at": now_kst().isoformat()
         }
 
     async def _get_latest_signal(self, stock_code: str, since: datetime) -> Optional[str]:
@@ -586,7 +630,7 @@ class TelegramReportService:
         limit: int = 50,
     ) -> list[dict]:
         """종목별 감정 분석 상세 목록."""
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
 
         conditions = [TelegramReport.message_date >= since]
         if stock_code:
@@ -630,7 +674,7 @@ class TelegramReportService:
         if not stock_codes:
             return []
 
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
 
         stmt = (
             select(ReportSentimentAnalysis, TelegramReport)
@@ -690,10 +734,10 @@ class TelegramReportService:
         if not stock_codes:
             return []
 
-        from datetime import date as date_type
+        from core.timezone import today_kst
 
-        since = datetime.utcnow() - timedelta(days=days)
-        start_date = date_type.today() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         # 일별 감정 분석 집계
         from sqlalchemy import Integer as SQLInteger, case

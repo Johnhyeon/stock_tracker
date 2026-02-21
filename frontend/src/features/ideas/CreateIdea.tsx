@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardFooter } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
-import MarkdownEditor from '../../components/ui/MarkdownEditor'
+const MarkdownEditor = lazy(() => import('../../components/ui/MarkdownEditor'))
 import TickerSearch from '../../components/ui/TickerSearch'
 import { ideaApi } from '../../services/api'
 import type { IdeaCreate, IdeaType, PositionCreate } from '../../types/idea'
@@ -109,7 +109,7 @@ export default function CreateIdea() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">새 아이디어 생성</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-t-text-primary mb-6">새 아이디어 생성</h1>
 
       <Card>
         <form onSubmit={handleSubmit}>
@@ -119,7 +119,7 @@ export default function CreateIdea() {
 
           <CardContent className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-md text-red-700 text-sm">
                 {error}
               </div>
             )}
@@ -152,7 +152,7 @@ export default function CreateIdea() {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-t-text-secondary mb-1">
                 종목
               </label>
               <div className="mb-2">
@@ -183,15 +183,17 @@ export default function CreateIdea() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-t-text-secondary mb-1">
                 투자 논리
               </label>
-              <MarkdownEditor
-                value={formData.thesis}
-                onChange={(value) => setFormData({ ...formData, thesis: value })}
-                placeholder="투자 논리를 작성하세요...&#10;&#10;이미지는 드래그앤드롭 또는 붙여넣기(Ctrl+V)로 추가할 수 있습니다."
-                minHeight={300}
-              />
+              <Suspense fallback={<div className="h-[300px] flex items-center justify-center text-gray-400 dark:text-gray-600 border rounded-lg">에디터 로딩중...</div>}>
+                <MarkdownEditor
+                  value={formData.thesis}
+                  onChange={(value) => setFormData({ ...formData, thesis: value })}
+                  placeholder="투자 논리를 작성하세요...&#10;&#10;이미지는 드래그앤드롭 또는 붙여넣기(Ctrl+V)로 추가할 수 있습니다."
+                  minHeight={300}
+                />
+              </Suspense>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -225,29 +227,29 @@ export default function CreateIdea() {
                   type="checkbox"
                   checked={addPosition}
                   onChange={(e) => setAddPosition(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="w-4 h-4 rounded border-gray-300 dark:border-t-border text-primary-600 focus:ring-primary-500"
                 />
-                <span className="text-sm font-medium text-gray-700">포지션도 함께 등록</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-t-text-secondary">포지션도 함께 등록</span>
               </label>
 
               {addPosition && (
-                <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                <div className="space-y-3 p-4 bg-gray-50 dark:bg-t-bg-elevated rounded-lg">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-t-text-secondary mb-1">
                       종목 선택
                     </label>
                     <select
                       value={positionData.ticker}
                       onChange={(e) => {
                         const selected = formData.tickers.find(t => t.includes(e.target.value))
-                        const name = selected?.replace(/\(\d{6}\)/, '').trim() || ''
+                        const name = selected?.replace(/\([A-Za-z0-9]{6}\)/, '').trim() || ''
                         setPositionData({ ...positionData, ticker: e.target.value, stock_name: name })
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-t-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">종목을 선택하세요</option>
                       {formData.tickers.map((ticker) => {
-                        const match = ticker.match(/\((\d{6})\)/)
+                        const match = ticker.match(/\(([A-Za-z0-9]{6})\)/)
                         const code = match ? match[1] : ticker
                         return (
                           <option key={code} value={code}>
@@ -257,7 +259,7 @@ export default function CreateIdea() {
                       })}
                     </select>
                     {formData.tickers.length === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">먼저 위에서 종목을 추가하세요</p>
+                      <p className="text-xs text-gray-500 dark:text-t-text-muted mt-1">먼저 위에서 종목을 추가하세요</p>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -283,7 +285,7 @@ export default function CreateIdea() {
                     />
                   </div>
                   {positionData.entry_price > 0 && positionData.quantity > 0 && (
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-t-text-muted">
                       총 매수금액:{' '}
                       <span className="font-medium">
                         {(positionData.entry_price * positionData.quantity).toLocaleString()}원

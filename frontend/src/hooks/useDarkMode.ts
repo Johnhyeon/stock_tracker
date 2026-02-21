@@ -11,7 +11,7 @@ function getSystemDarkMode(): boolean {
 export function useDarkMode() {
   const [mode, setMode] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('theme-mode')
-    return (saved as ThemeMode) || 'auto'
+    return (saved as ThemeMode) || 'dark'
   })
 
   const [isDark, setIsDark] = useState(() => {

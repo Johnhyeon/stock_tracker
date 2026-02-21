@@ -131,3 +131,23 @@ async def clear_cache():
     price_service = get_price_service()
     await price_service.clear_cache()
     return {"message": "Cache cleared"}
+
+
+@router.post("/index-ohlcv/backfill")
+async def backfill_index(
+    start_date: str = Query(default="20220102", regex=r"^\d{8}$"),
+):
+    """지수 OHLCV 과거 데이터 백필 (일회성)."""
+    import asyncio
+    from scheduler.jobs.index_ohlcv_collect import backfill_index_ohlcv
+    asyncio.create_task(backfill_index_ohlcv(start_date))
+    return {"message": f"백필 시작: {start_date}~현재, 로그를 확인하세요."}
+
+
+@router.post("/index-ohlcv/collect")
+async def collect_index_now():
+    """지수 OHLCV 최근 30일 수집 (수동 트리거)."""
+    import asyncio
+    from scheduler.jobs.index_ohlcv_collect import collect_index_ohlcv
+    asyncio.create_task(collect_index_ohlcv())
+    return {"message": "최근 30일 지수 수집 시작"}

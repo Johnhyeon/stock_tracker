@@ -1,7 +1,7 @@
 """섹터별 거래대금/수급 분석 API."""
 import asyncio
 import logging
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_async_db
+from core.timezone import now_kst
 from integrations.kis.client import get_kis_client
 from services.theme_map_service import get_theme_map_service
 
@@ -242,7 +243,7 @@ async def get_sector_flow_summary(
         "sectors": sectors_data,
         "total_trading_value": int(total_value),
         "trade_date": latest_date.isoformat(),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -283,7 +284,7 @@ async def get_sector_flow_ranking(
         "sort_by": sort_by,
         "count": len(sectors[:limit]),
         "trade_date": summary.get("trade_date"),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -339,7 +340,7 @@ async def get_sector_treemap_data(
         "period": period,
         "total_value": summary["total_trading_value"],
         "trade_date": summary.get("trade_date"),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -443,7 +444,7 @@ async def get_sector_stocks(
         "stocks": stocks,
         "count": len(stocks),
         "trade_date": latest_date.isoformat(),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -477,7 +478,7 @@ async def get_realtime_sector_flow(
     30초 캐시를 사용하여 API 부하를 줄입니다.
     """
     global _realtime_cache
-    now = datetime.now()
+    now = now_kst()
     is_market_open = (
         now.weekday() < 5  # 월-금
         and 9 <= now.hour < 16  # 09:00 ~ 15:59
@@ -665,7 +666,7 @@ async def get_realtime_sector_flow(
         "is_realtime": True,
         "cached": False,
         "time_ratio": round((minutes_elapsed / total_minutes) * 100, 0) if is_market_open else 100,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
     # 캐시 저장

@@ -11,10 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, Integer
 from sqlalchemy.dialects.postgresql import insert
 
-from models import ThemeNews, ThemeNewsStats, YouTubeMention, TraderMention
+from core.timezone import now_kst, today_kst
+from models import ThemeNews, ThemeNewsStats, YouTubeMention, ExpertMention
 from integrations.naver_search import NaverSearchClient
 from integrations.rss import RSSClient, RSSFeedItem
 from core.config import get_settings
+from services.theme_map_service import get_theme_map_service
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +110,8 @@ class NewsCollectorService:
         return self._rss_client
 
     async def _get_mentioned_stock_codes(self, days: int = 7) -> set[str]:
-        """최근 언급된 종목 코드 조회 (YouTube + Trader)."""
-        start_date = date.today() - timedelta(days=days)
+        """최근 언급된 종목 코드 조회 (YouTube + Expert)."""
+        start_date = today_kst() - timedelta(days=days)
         mentioned_codes = set()
 
         # YouTube 언급 종목
@@ -122,13 +124,13 @@ class NewsCollectorService:
             if row:
                 mentioned_codes.update(row)
 
-        # Trader 언급 종목
-        trader_stmt = (
-            select(func.distinct(TraderMention.stock_code))
-            .where(TraderMention.mention_date >= start_date)
+        # Expert 언급 종목
+        expert_stmt = (
+            select(func.distinct(ExpertMention.stock_code))
+            .where(ExpertMention.mention_date >= start_date)
         )
-        trader_result = await self.db.execute(trader_stmt)
-        for code in trader_result.scalars().all():
+        expert_result = await self.db.execute(expert_stmt)
+        for code in expert_result.scalars().all():
             if code:
                 mentioned_codes.add(code)
 
@@ -245,7 +247,7 @@ class NewsCollectorService:
                         title=item.title,
                         url=item.link,
                         source=item.source,
-                        published_at=item.pub_date or datetime.utcnow(),
+                        published_at=item.pub_date or now_kst().replace(tzinfo=None),
                         description=item.description,
                         collection_source="rss",
                     )
@@ -356,7 +358,7 @@ class NewsCollectorService:
                 "total_count": 0,
                 "mentioned_stocks": 0,
                 "target_themes": 0,
-                "collected_at": datetime.utcnow().isoformat(),
+                "collected_at": now_kst().isoformat(),
             }
 
         target_themes = self._get_themes_for_stocks(mentioned_codes)
@@ -378,7 +380,7 @@ class NewsCollectorService:
             "total_count": naver_count + rss_count,
             "mentioned_stocks": len(mentioned_codes),
             "target_themes": len(target_themes),
-            "collected_at": datetime.utcnow().isoformat(),
+            "collected_at": now_kst().isoformat(),
         }
 
     async def update_stats(self, target_date: Optional[date] = None):
@@ -387,7 +389,7 @@ class NewsCollectorService:
         Args:
             target_date: 갱신할 날짜 (None이면 오늘)
         """
-        stat_date = target_date or date.today()
+        stat_date = target_date or today_kst()
 
         # 테마별 집계
         stmt = (
@@ -463,7 +465,7 @@ class NewsCollectorService:
                     'unique_sources': unique_sources,
                     'top_keywords': top_keywords,
                     'wow_change_pct': wow_change,
-                    'updated_at': datetime.utcnow(),
+                    'updated_at': now_kst().replace(tzinfo=None),
                 }
             )
 
@@ -486,7 +488,7 @@ class NewsCollectorService:
         Returns:
             일별 뉴스 통계 리스트
         """
-        start_date = date.today() - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         stmt = (
             select(ThemeNewsStats)
@@ -559,7 +561,7 @@ class NewsCollectorService:
                 "source_diversity": int,
             }
         """
-        end_date = datetime.now()
+        end_date = now_kst().replace(tzinfo=None)
         start_date = end_date - timedelta(days=days)
 
         # 최근 7일 뉴스 수, 양질 뉴스 수, 출처 다양성

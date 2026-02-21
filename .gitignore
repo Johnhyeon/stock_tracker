@@ -33,6 +33,7 @@ logs/
 # Database
 *.db
 *.sqlite3
+investment_tracker_dump.sql
 
 # Coverage
 coverage/
@@ -48,3 +49,4 @@ uploads/
 *.jpeg
 .pytest_cache/
 .claude/
+.worktrees/

@@ -3,10 +3,12 @@ import logging
 
 from core.database import async_session_maker
 from services.alert_service import AlertService
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("alert_check")
 async def check_alerts():
     """
     활성화된 모든 알림 규칙을 확인하고 조건 충족 시 알림 발송.

@@ -1,0 +1,15 @@
+[Unit]
+Description=mentions.json 변경 감지 → 서버 자동 전송
+After=network.target
+
+[Service]
+Type=simple
+User=hyeon
+ExecStart=/home/hyeon/project/88_bot/push_mentions.sh
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/hyeon/project/88_bot/push_mentions.log
+StandardError=append:/home/hyeon/project/88_bot/push_mentions.log
+
+[Install]
+WantedBy=multi-user.target

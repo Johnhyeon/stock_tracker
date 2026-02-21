@@ -7,7 +7,7 @@ class ThemeStock(BaseModel):
     """테마 내 종목."""
     code: str
     name: Optional[str] = None
-    source: Optional[str] = None  # youtube, trader, both
+    source: Optional[str] = None  # youtube, expert, both
     mentions: int = 0
     price_change: Optional[float] = None
     volume: Optional[int] = None
@@ -19,7 +19,7 @@ class HotTheme(BaseModel):
     total_score: float
     stock_count: int
     youtube_mentions: int
-    trader_mentions: int
+    expert_mentions: int
     avg_price_change: float
     total_volume: int
     stocks: list[ThemeStock]

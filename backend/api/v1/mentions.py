@@ -17,7 +17,7 @@ async def trending_mentions(
 ):
     """전체 소스 합산 인기 종목.
 
-    YouTube, 트레이더, 텔레그램 아이디어에서 종합적으로 많이 언급된 종목을 조회합니다.
+    YouTube, 전문가, 텔레그램 아이디어에서 종합적으로 많이 언급된 종목을 조회합니다.
     """
     return await get_trending_mentions(db, days=days, limit=limit)
 
@@ -30,6 +30,6 @@ async def convergence_signals(
 ):
     """교차 시그널 종목.
 
-    2개 이상 소스(유튜브, 트레이더, 텔레그램)에서 동시에 언급된 종목을 조회합니다.
+    2개 이상 소스(유튜브, 전문가, 텔레그램)에서 동시에 언급된 종목을 조회합니다.
     """
     return await get_convergence_signals(db, days=days, min_sources=min_sources)

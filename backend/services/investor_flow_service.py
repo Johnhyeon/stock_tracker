@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from models import StockInvestorFlow
 from integrations.kis.client import get_kis_client
+from core.timezone import today_kst
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,21 @@ class InvestorFlowService:
         stmt = select(func.max(StockInvestorFlow.flow_date))
         result = await self.db.execute(stmt)
         return result.scalar()
+
+    async def _get_stocks_with_today_data(self, stock_codes: list[str]) -> set[str]:
+        """오늘 이미 수급 데이터가 있는 종목코드 집합을 반환합니다."""
+        today = today_kst()
+        stmt = (
+            select(StockInvestorFlow.stock_code)
+            .where(
+                and_(
+                    StockInvestorFlow.stock_code.in_(stock_codes),
+                    StockInvestorFlow.flow_date == today,
+                )
+            )
+        )
+        result = await self.db.execute(stmt)
+        return set(result.scalars().all())
 
     async def collect_investor_flow(
         self,
@@ -51,29 +67,53 @@ class InvestorFlowService:
         collected_stocks = 0
         failed_stocks = 0
         records_saved = 0
+        skipped_stocks = 0
 
         # 기존 데이터 유무 확인 (force_full이 아닐 때만)
         fetch_days = days
+        codes_to_fetch = stock_codes
         if not force_full:
             latest_date = await self._get_latest_flow_date()
             if latest_date:
                 # 기존 데이터가 있으면 최근 3일만 수집
                 fetch_days = 3
-                logger.info(f"기존 데이터 있음 (최신: {latest_date}), {fetch_days}일치만 수집")
+
+                # 오늘 이미 데이터가 있는 종목은 건너뜀
+                already_collected = await self._get_stocks_with_today_data(stock_codes)
+                if already_collected:
+                    codes_to_fetch = [c for c in stock_codes if c not in already_collected]
+                    skipped_stocks = len(already_collected)
+                    logger.info(
+                        f"기존 데이터 있음 (최신: {latest_date}), "
+                        f"오늘 수집 완료 {skipped_stocks}개 건너뜀, "
+                        f"{len(codes_to_fetch)}개 종목만 수집"
+                    )
+                else:
+                    logger.info(f"기존 데이터 있음 (최신: {latest_date}), {fetch_days}일치만 수집")
             else:
                 logger.info(f"기존 데이터 없음, {days}일치 전체 수집")
+
+        if not codes_to_fetch:
+            logger.info("모든 종목의 오늘 수급 데이터가 이미 수집됨, 건너뜀")
+            return {
+                "collected_count": 0,
+                "failed_count": 0,
+                "records_saved": 0,
+                "fetch_days": fetch_days,
+                "skipped_stocks": skipped_stocks,
+            }
 
         # KIS API로 데이터 조회
         try:
             flow_data = await self.kis_client.get_multiple_investor_trading(
-                stock_codes,
+                codes_to_fetch,
                 days=fetch_days,
                 max_concurrent=3,
                 delay_between=0.2,
             )
         except Exception as e:
             logger.error(f"수급 데이터 조회 실패: {e}")
-            return {"collected_count": 0, "failed_count": len(stock_codes), "records_saved": 0, "fetch_days": fetch_days}
+            return {"collected_count": 0, "failed_count": len(codes_to_fetch), "records_saved": 0, "fetch_days": fetch_days}
 
         # DB에 저장 (종목별로 여러 일치 데이터)
         for code, daily_data_list in flow_data.items():
@@ -141,12 +181,16 @@ class InvestorFlowService:
 
         await self.db.commit()
 
-        logger.info(f"수급 데이터 수집 완료: {collected_stocks}개 종목, {records_saved}개 레코드 저장 ({fetch_days}일치)")
+        logger.info(
+            f"수급 데이터 수집 완료: {collected_stocks}개 종목, {records_saved}개 레코드 저장 "
+            f"({fetch_days}일치, {skipped_stocks}개 건너뜀)"
+        )
         return {
             "collected_count": collected_stocks,
             "failed_count": failed_stocks,
             "records_saved": records_saved,
             "fetch_days": fetch_days,
+            "skipped_stocks": skipped_stocks,
         }
 
     def _calculate_flow_score(
@@ -231,7 +275,7 @@ class InvestorFlowService:
                 "data_date": None,
             }
 
-        start_date = date.today() - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         stmt = (
             select(StockInvestorFlow)
@@ -363,7 +407,7 @@ class InvestorFlowService:
         Returns:
             일별 수급 데이터 리스트
         """
-        start_date = date.today() - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         stmt = (
             select(StockInvestorFlow)
@@ -411,7 +455,7 @@ class InvestorFlowService:
         if not stock_codes:
             return []
 
-        start_date = date.today() - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         stmt = (
             select(StockInvestorFlow)

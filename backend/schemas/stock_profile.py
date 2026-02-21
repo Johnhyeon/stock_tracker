@@ -33,7 +33,7 @@ class YoutubeMentionSummary(BaseModel):
     is_trending: bool = False
 
 
-class TraderMentionSummary(BaseModel):
+class ExpertMentionSummary(BaseModel):
     mention_count: int = 0
     total_mentions: int = 0
     period_days: int = 14
@@ -70,7 +70,7 @@ class StockProfileResponse(BaseModel):
     ohlcv: OHLCVSummary
     investor_flow: FlowSummary
     youtube_mentions: YoutubeMentionSummary
-    trader_mentions: TraderMentionSummary
+    expert_mentions: ExpertMentionSummary
     disclosures: list[DisclosureItem] = []
     telegram_ideas: list[TelegramIdeaItem] = []
     sentiment: SentimentSummary
@@ -82,7 +82,7 @@ class TrendingMentionItem(BaseModel):
     stock_code: str
     stock_name: str = ""
     youtube_count: int = 0
-    trader_count: int = 0
+    expert_count: int = 0
     telegram_count: int = 0
     total_mentions: int = 0
     source_count: int = 0

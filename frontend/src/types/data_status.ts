@@ -59,8 +59,8 @@ export const STATUS_COLORS: Record<DataStatus, string> = {
   ok: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   stale: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   empty: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  error: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
-  unknown: 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600',
+  error: 'bg-gray-100 text-gray-500 dark:bg-t-bg-card dark:text-t-text-muted',
+  unknown: 'bg-gray-100 text-gray-400 dark:bg-t-bg-card dark:text-t-text-muted',
 }
 
 // 상태 텍스트

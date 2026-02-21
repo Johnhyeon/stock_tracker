@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { dataStatusApi, type RefreshStatus } from '../../services/api'
@@ -70,19 +70,19 @@ function CategorySection({
   const refreshableItems = items.filter((item) => item.can_refresh)
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 dark:border-t-border rounded-lg overflow-hidden">
       {/* 카테고리 헤더 */}
       <div
-        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-t-bg-card cursor-pointer hover:bg-gray-100 dark:hover:bg-t-border/50 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-3">
           <span className="text-xl">{meta.icon}</span>
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="font-semibold text-gray-900 dark:text-t-text-primary">
               {meta.name}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">
               {items.length}개 항목
               {staleCount > 0 && (
                 <span className="text-yellow-600 dark:text-yellow-400 ml-2">
@@ -119,7 +119,7 @@ function CategorySection({
 
       {/* 아이템 목록 */}
       {isOpen && (
-        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+        <div className="divide-y divide-gray-100 dark:divide-t-border">
           {items.map((item) => (
             <DataStatusRow
               key={item.key}
@@ -148,7 +148,7 @@ function DataStatusRow({ item, refreshing, refreshStatus, onRefresh }: DataStatu
   const itemProgress = refreshStatus?.progress?.[item.key]
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+    <div className="flex items-center justify-between p-4 bg-white dark:bg-t-bg hover:bg-gray-50 dark:hover:bg-t-bg-card transition-colors">
       <div className="flex items-center gap-3 flex-1">
         {/* 상태 도트 */}
         <div className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT_COLORS[item.status as DataStatus]}`} />
@@ -156,7 +156,7 @@ function DataStatusRow({ item, refreshing, refreshStatus, onRefresh }: DataStatu
         {/* 데이터 정보 */}
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-900 dark:text-gray-100">
+            <span className="font-medium text-gray-900 dark:text-t-text-primary">
               {item.name}
             </span>
             <span
@@ -174,10 +174,10 @@ function DataStatusRow({ item, refreshing, refreshStatus, onRefresh }: DataStatu
               <span className="text-xs text-red-600 dark:text-red-400">오류</span>
             )}
           </div>
-          <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <div className="flex gap-4 text-sm text-gray-500 dark:text-t-text-muted mt-1">
             <span>레코드: {formatNumber(item.record_count)}</span>
             <span>업데이트: {formatDate(item.last_updated)}</span>
-            <span className="text-gray-400 dark:text-gray-500">
+            <span className="text-gray-400 dark:text-t-text-muted">
               스케줄: {item.schedule.description}
             </span>
           </div>
@@ -235,7 +235,7 @@ function StatusSummary({ status }: StatusSummaryProps) {
         <p className={`text-sm font-medium ${getOverallColor()}`}>
           {getOverallText()}
         </p>
-        <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <div className="flex gap-4 text-xs text-gray-500 dark:text-t-text-muted mt-1">
           <span className="text-green-600 dark:text-green-400">최신 {okCount}</span>
           <span className="text-yellow-600 dark:text-yellow-400">오래됨 {staleCount}</span>
           {emptyCount > 0 && (
@@ -246,7 +246,7 @@ function StatusSummary({ status }: StatusSummaryProps) {
           )}
         </div>
       </div>
-      <p className="text-xs text-gray-400 dark:text-gray-500">
+      <p className="text-xs text-gray-400 dark:text-t-text-muted">
         확인: {formatDate(status.checked_at)}
       </p>
     </div>
@@ -259,13 +259,17 @@ export default function UnifiedDataDashboard() {
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const lastStatusFetchRef = useRef(0)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchStatus = useCallback(async () => {
     try {
       const data = await dataStatusApi.getAllStatus()
       setStatus(data)
       setError(null)
+      lastStatusFetchRef.current = Date.now()
     } catch (e) {
       setError('상태 조회 실패')
       console.error(e)
@@ -280,67 +284,76 @@ export default function UnifiedDataDashboard() {
       setRefreshStatus(data)
 
       if (data.is_running) {
-        setTimeout(fetchRefreshStatus, 2000)
-      } else if (refreshing) {
+        // 진행 중: 5초마다 데이터 상태도 갱신 (완료된 항목 반영)
+        if (Date.now() - lastStatusFetchRef.current > 5000) {
+          fetchStatus()
+        }
+        setTimeout(fetchRefreshStatus, 1000)
+      } else {
         setRefreshing(false)
         fetchStatus()
+        // 완료 후 3초간 결과 표시 후 숨김
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = setTimeout(() => {
+          setShowProgress(false)
+        }, 3000)
       }
     } catch (e) {
       console.error(e)
+      setRefreshing(false)
     }
-  }, [refreshing, fetchStatus])
+  }, [fetchStatus])
 
   useEffect(() => {
     fetchStatus()
   }, [fetchStatus])
 
-  // 전체 새로고침
-  const handleRefreshAll = async () => {
-    if (!status) return
-
-    try {
-      setRefreshing(true)
-      const allItems = [
-        ...status.market,
-        ...status.analysis,
-        ...status.external,
-        ...status.telegram,
-      ]
-      const refreshableKeys = allItems
-        .filter((item) => item.can_refresh)
-        .map((item) => item.key)
-
-      await dataStatusApi.refresh(refreshableKeys)
-      fetchRefreshStatus()
-    } catch (e) {
-      setError('새로고침 시작 실패')
-      setRefreshing(false)
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
     }
-  }
+  }, [])
 
-  // 카테고리별 새로고침
-  const handleRefreshCategory = async (items: DataStatusItemFull[]) => {
+  // 새로고침 시작 공통 로직
+  const startRefresh = async (keys: string[]) => {
     try {
       setRefreshing(true)
-      const keys = items.filter((item) => item.can_refresh).map((item) => item.key)
+      setShowProgress(true)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
       await dataStatusApi.refresh(keys)
       fetchRefreshStatus()
     } catch (e) {
       setError('새로고침 시작 실패')
       setRefreshing(false)
+      setShowProgress(false)
     }
+  }
+
+  // 전체 새로고침
+  const handleRefreshAll = async () => {
+    if (!status) return
+    const allItems = [
+      ...status.market,
+      ...status.analysis,
+      ...status.external,
+      ...status.telegram,
+    ]
+    const refreshableKeys = allItems
+      .filter((item) => item.can_refresh)
+      .map((item) => item.key)
+    await startRefresh(refreshableKeys)
+  }
+
+  // 카테고리별 새로고침
+  const handleRefreshCategory = async (items: DataStatusItemFull[]) => {
+    const keys = items.filter((item) => item.can_refresh).map((item) => item.key)
+    await startRefresh(keys)
   }
 
   // 단일 항목 새로고침
   const handleRefreshSingle = async (key: string) => {
-    try {
-      setRefreshing(true)
-      await dataStatusApi.refresh([key])
-      fetchRefreshStatus()
-    } catch (e) {
-      setError('새로고침 시작 실패')
-      setRefreshing(false)
-    }
+    await startRefresh([key])
   }
 
   if (loading) {
@@ -349,7 +362,7 @@ export default function UnifiedDataDashboard() {
         <h2 className="text-lg font-semibold mb-4">데이터 수집 현황</h2>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
-          <span className="ml-3 text-gray-500 dark:text-gray-400">로딩 중...</span>
+          <span className="ml-3 text-gray-500 dark:text-t-text-muted">로딩 중...</span>
         </div>
       </Card>
     )
@@ -381,7 +394,7 @@ export default function UnifiedDataDashboard() {
       {/* 헤더 */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-t-text-primary">
             데이터 수집 현황
           </h2>
           <StatusSummary status={status} />
@@ -396,21 +409,27 @@ export default function UnifiedDataDashboard() {
       </div>
 
       {/* 진행 상태 바 */}
-      {refreshStatus?.is_running && (
+      {showProgress && refreshStatus && (
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <div className="flex items-center gap-2 mb-3">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+            {refreshStatus.is_running ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+            ) : (
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              새로고침 진행 중...
+              {refreshStatus.is_running ? '새로고침 진행 중...' : '새로고침 완료'}
             </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
             {Object.entries(refreshStatus.progress).map(([key, state]) => (
               <div
                 key={key}
-                className="flex items-center justify-between px-2 py-1 bg-white dark:bg-gray-800 rounded"
+                className="flex items-center justify-between px-2 py-1 bg-white dark:bg-t-bg-card rounded"
               >
-                <span className="text-gray-700 dark:text-gray-300 truncate">
+                <span className="text-gray-700 dark:text-t-text-secondary truncate">
                   {key}
                 </span>
                 <span

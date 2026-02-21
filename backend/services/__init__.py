@@ -4,6 +4,7 @@ from .analysis_service import AnalysisService
 from .price_service import PriceService, get_price_service
 from .disclosure_service import DisclosureService
 from .youtube_service import YouTubeService
+from .snapshot_service import SnapshotService
 
 __all__ = [
     "IdeaService",
@@ -13,4 +14,5 @@ __all__ = [
     "get_price_service",
     "DisclosureService",
     "YouTubeService",
+    "SnapshotService",
 ]

@@ -13,6 +13,7 @@ from sqlalchemy import select, and_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
+from core.timezone import now_kst
 from core.config import get_settings
 from models import TelegramIdea, IdeaSourceType, Stock
 
@@ -236,10 +237,15 @@ class TelegramIdeaService:
             if not connected:
                 return {"results": [], "total_messages": 0, "total_ideas": 0, "error": "연결 실패"}
 
+        from telethon.tl.types import PeerChannel
+
         client = await self._get_telethon_client()
         results = []
         total_messages = 0
         total_ideas = 0
+
+        # 엔티티 캐시 사전 로드
+        _dialogs_loaded = False
 
         # 두 채널 모두 수집
         channel_ids = [
@@ -260,7 +266,19 @@ class TelegramIdeaService:
             }
 
             try:
-                entity = await client.get_entity(channel_id)
+                # 엔티티 resolve (PeerChannel 명시 → dialogs 로드 fallback)
+                entity = None
+                try:
+                    entity = await client.get_input_entity(PeerChannel(channel_id))
+                except ValueError:
+                    pass
+
+                if entity is None:
+                    if not _dialogs_loaded:
+                        logger.info("Loading dialogs to populate entity cache...")
+                        await client.get_dialogs()
+                        _dialogs_loaded = True
+                    entity = await client.get_entity(channel_id)
 
                 # collect_all 모드면 가장 오래된 저장된 message_id부터 역순으로 수집
                 min_id = 0
@@ -463,7 +481,7 @@ class TelegramIdeaService:
         Returns:
             (아이디어 목록, 전체 개수)
         """
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
         conditions = [TelegramIdea.original_date >= since]
 
         if source_type:
@@ -506,7 +524,7 @@ class TelegramIdeaService:
         Returns:
             [{"stock_code", "stock_name", "mention_count", "latest_date", "sources"}, ...]
         """
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
 
         stmt = (
             select(
@@ -546,7 +564,7 @@ class TelegramIdeaService:
         Returns:
             [{"name", "idea_count", "top_stocks", "latest_idea_date"}, ...]
         """
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
 
         # 발신자별 아이디어 수
         stmt = (

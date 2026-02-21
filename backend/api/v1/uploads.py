@@ -1,9 +1,10 @@
 import os
 import uuid
-from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
+
+from core.timezone import now_kst
 
 router = APIRouter()
 
@@ -28,7 +29,7 @@ async def upload_image(file: UploadFile = File(...)):
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다.")
 
-    date_folder = datetime.now().strftime("%Y/%m")
+    date_folder = now_kst().strftime("%Y/%m")
     save_dir = UPLOAD_DIR / date_folder
     save_dir.mkdir(parents=True, exist_ok=True)
 

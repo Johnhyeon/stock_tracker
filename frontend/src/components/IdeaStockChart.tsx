@@ -174,7 +174,7 @@ export function IdeaStockChart({
           <span className="font-medium">{stockName}</span>
         </div>
         <div
-          className="flex items-center justify-center bg-gray-50 rounded"
+          className="flex items-center justify-center bg-gray-50 dark:bg-t-bg-elevated rounded"
           style={{ height: `${height}px` }}
         >
           <span className="text-gray-400 text-sm animate-pulse">로딩 중...</span>
@@ -190,7 +190,7 @@ export function IdeaStockChart({
           <span className="font-medium">{stockName}</span>
         </div>
         <div
-          className="flex items-center justify-center bg-gray-50 rounded"
+          className="flex items-center justify-center bg-gray-50 dark:bg-t-bg-elevated rounded"
           style={{ height: `${height}px` }}
         >
           <span className="text-red-400 text-sm">{error}</span>
@@ -225,7 +225,7 @@ export function IdeaStockChart({
       </div>
 
       {/* 가격 정보 및 수급 요약 */}
-      <div className="flex justify-between items-center text-sm text-gray-500 mb-2">
+      <div className="flex justify-between items-center text-sm text-gray-500 dark:text-t-text-muted mb-2">
         {entryPrice && (
           <div>
             <span>{priceLabel}: {entryPrice.toLocaleString()}원</span>
@@ -241,7 +241,7 @@ export function IdeaStockChart({
                   ? 'bg-red-100 text-red-700'
                   : flowSummary.recentTrend === 'sell'
                   ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-600'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted'
               }`}
             >
               {flowSummary.recentTrend === 'buy' ? '매집' : flowSummary.recentTrend === 'sell' ? '이탈' : '중립'}
@@ -266,16 +266,16 @@ export function IdeaStockChart({
         <div className="flex items-center gap-2 text-sm mb-2">
           <span
             className={`px-2 py-0.5 rounded text-xs font-medium ${
-              PATTERN_TYPE_COLORS[patternData.pattern_type] || 'bg-gray-100 text-gray-800'
+              PATTERN_TYPE_COLORS[patternData.pattern_type] || 'bg-gray-100 dark:bg-t-bg-elevated text-gray-800 dark:text-t-text-primary'
             }`}
           >
             {PATTERN_TYPE_LABELS[patternData.pattern_type] || patternData.pattern_type}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-t-text-muted">
             신뢰도 {patternData.confidence}%
           </span>
           {patternData.price_from_support_pct !== undefined && patternData.price_from_support_pct !== null && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-t-text-muted">
               지지선 대비{' '}
               <span className={patternData.price_from_support_pct >= 0 ? 'text-red-600' : 'text-blue-600'}>
                 {patternData.price_from_support_pct >= 0 ? '+' : ''}{patternData.price_from_support_pct.toFixed(1)}%

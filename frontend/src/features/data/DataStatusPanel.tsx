@@ -14,8 +14,8 @@ const STATUS_COLORS: Record<string, string> = {
   ok: 'bg-green-100 text-green-700',
   stale: 'bg-yellow-100 text-yellow-700',
   empty: 'bg-red-100 text-red-700',
-  error: 'bg-gray-100 text-gray-500',
-  unknown: 'bg-gray-100 text-gray-400',
+  error: 'bg-gray-100 dark:bg-t-bg-elevated text-gray-500 dark:text-t-text-muted',
+  unknown: 'bg-gray-100 dark:bg-t-bg-elevated text-gray-400',
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -120,7 +120,7 @@ export default function DataStatusPanel() {
     return (
       <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">데이터 상태</h2>
-        <p className="text-gray-500">로딩 중...</p>
+        <p className="text-gray-500 dark:text-t-text-muted">로딩 중...</p>
       </Card>
     )
   }
@@ -155,7 +155,7 @@ export default function DataStatusPanel() {
         <div>
           <h2 className="text-lg font-semibold">데이터 상태</h2>
           {status && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">
               {status.overall_status === 'ok' && '모든 데이터가 최신입니다'}
               {status.overall_status === 'needs_refresh' &&
                 `${staleCount}개 데이터가 오래되었습니다`}
@@ -175,7 +175,7 @@ export default function DataStatusPanel() {
 
       {/* 진행 상태 */}
       {refreshStatus?.is_running && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
             <span className="text-sm font-medium text-blue-700">
@@ -216,7 +216,7 @@ export default function DataStatusPanel() {
         {dataItems.map((item) => (
           <div
             key={item.key}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-t-bg-elevated rounded-lg"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -229,7 +229,7 @@ export default function DataStatusPanel() {
                   {STATUS_TEXT[item.status]}
                 </span>
               </div>
-              <div className="flex gap-4 text-sm text-gray-500 mt-1">
+              <div className="flex gap-4 text-sm text-gray-500 dark:text-t-text-muted mt-1">
                 <span>레코드: {formatNumber(item.record_count)}</span>
                 <span>업데이트: {formatDate(item.last_updated)}</span>
               </div>

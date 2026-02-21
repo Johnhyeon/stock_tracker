@@ -16,6 +16,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.config import get_settings
+from core.timezone import now_kst
 from models.etf_ohlcv import EtfOHLCV
 from core.database import Base
 
@@ -155,7 +156,7 @@ def main(days: int = 365):
     print(f"수집 대상 ETF: {len(etf_list)}개\n")
 
     # 날짜 범위
-    end_date = datetime.now()
+    end_date = now_kst()
     start_date = end_date - timedelta(days=days)
     start_str = start_date.strftime("%Y%m%d")
     end_str = end_date.strftime("%Y%m%d")

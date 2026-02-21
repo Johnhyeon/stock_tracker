@@ -15,6 +15,7 @@ from pykrx import stock
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from core.database import async_session_maker
+from core.timezone import now_kst
 from models.stock_investor_flow import StockInvestorFlow
 
 
@@ -141,7 +142,7 @@ async def main():
     print()
 
     # 날짜 범위 (1년)
-    end_date = datetime.now()
+    end_date = now_kst()
     start_date = end_date - timedelta(days=365)
     start_str = start_date.strftime("%Y%m%d")
     end_str = end_date.strftime("%Y%m%d")

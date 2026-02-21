@@ -271,15 +271,15 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden"
+        className="bg-white dark:bg-t-bg-card rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 dark:bg-t-bg-elevated">
           <div className="flex items-center gap-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">전체 ETF 수익률 비교</h2>
-              <p className="text-sm text-gray-500">{PERIOD_CONFIG[period].label} 현재 (시작일 기준 수익률)</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-t-text-primary">전체 ETF 수익률 비교</h2>
+              <p className="text-sm text-gray-500 dark:text-t-text-muted">{PERIOD_CONFIG[period].label} 현재 (시작일 기준 수익률)</p>
             </div>
             <div className="flex gap-1">
               {(Object.keys(PERIOD_CONFIG) as PeriodType[]).map((p) => (
@@ -289,7 +289,7 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                     period === p
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      : 'bg-gray-200 dark:bg-t-border text-gray-600 dark:text-t-text-muted hover:bg-gray-300 dark:hover:bg-t-border-hover'
                   }`}
                 >
                   {p}년
@@ -299,7 +299,7 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-t-text-muted dark:text-t-text-muted text-2xl leading-none"
           >
             &times;
           </button>
@@ -314,7 +314,7 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-4 text-red-700">
               {error}
             </div>
           )}
@@ -324,9 +324,9 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
               {/* 테마 선택 */}
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium text-gray-700">테마 선택:</span>
-                  <button onClick={selectAll} className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200">전체</button>
-                  <button onClick={selectNone} className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200">해제</button>
+                  <span className="text-sm font-medium text-gray-700 dark:text-t-text-secondary">테마 선택:</span>
+                  <button onClick={selectAll} className="px-2 py-1 text-xs bg-gray-100 dark:bg-t-bg-elevated rounded hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border">전체</button>
+                  <button onClick={selectNone} className="px-2 py-1 text-xs bg-gray-100 dark:bg-t-bg-elevated rounded hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border">해제</button>
                   <button onClick={selectTop5} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">상위 5</button>
                   <button onClick={selectBottom5} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">하위 5</button>
                 </div>
@@ -338,7 +338,7 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
                       className={`px-2 py-1 text-xs rounded-full border transition-colors ${
                         selectedThemes.has(etf.theme)
                           ? 'border-transparent text-white'
-                          : 'border-gray-300 text-gray-500 bg-white'
+                          : 'border-gray-300 dark:border-t-border text-gray-500 dark:text-t-text-muted bg-white dark:bg-t-bg-card'
                       }`}
                       style={{
                         backgroundColor: selectedThemes.has(etf.theme)
@@ -353,13 +353,13 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
               </div>
 
               {/* 차트 */}
-              <div className="border rounded-lg bg-gray-50 p-4 overflow-x-auto">
+              <div className="border rounded-lg bg-gray-50 dark:bg-t-bg-elevated p-4 overflow-x-auto">
                 {renderChart()}
               </div>
 
               {/* 순위 테이블 */}
               <div className="mt-4 grid grid-cols-2 gap-4">
-                <div className="bg-red-50 rounded-lg p-4">
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
                   <h3 className="font-semibold text-red-800 mb-2">상승 TOP 5</h3>
                   <div className="space-y-1">
                     {data.slice(0, 5).map((etf, idx) => (
@@ -370,7 +370,7 @@ export default function AllEtfCompareModal({ isOpen, onClose }: AllEtfCompareMod
                     ))}
                   </div>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-800 mb-2">하락 TOP 5</h3>
                   <div className="space-y-1">
                     {data.slice(-5).reverse().map((etf, idx) => (

@@ -60,3 +60,24 @@ export function invalidateCacheByPrefix(prefix: string): void {
 export function clearCache(): void {
   cache.clear()
 }
+
+// 도메인별 캐시 무효화 헬퍼
+export function invalidateDashboard(): void {
+  invalidateCache('dashboard')
+}
+
+export function invalidateIdeas(): void {
+  invalidateCache('dashboard')
+}
+
+export function invalidatePrices(): void {
+  invalidateCacheByPrefix('ohlcv:')
+}
+
+export function invalidateEmerging(): void {
+  invalidateCacheByPrefix('emerging:')
+}
+
+export function invalidateFlowRanking(): void {
+  invalidateCacheByPrefix('flow-')
+}

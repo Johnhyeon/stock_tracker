@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass, field
 
+from core.timezone import now_kst
+
 
 @dataclass
 class CollectionTask:
@@ -28,7 +30,7 @@ class CollectionStatusManager:
         if task_type in self._tasks:
             self._tasks[task_type] = CollectionTask(
                 is_running=True,
-                started_at=datetime.now(),
+                started_at=now_kst(),
                 task_type=task_type,
                 progress=progress,
             )

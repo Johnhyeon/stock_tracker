@@ -2,6 +2,8 @@
 from datetime import datetime
 from typing import Literal
 
+from core.timezone import now_kst
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +33,7 @@ async def get_etf_heatmap(
         "period": period,
         "themes": data,
         "count": len(data),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -77,7 +79,7 @@ async def get_all_etfs(
     return {
         "etfs": data,
         "count": len(data),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -111,7 +113,7 @@ async def get_rotation_signals(
             "total": len(signals),
         },
         "top_signals": signals[:5],
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -171,7 +173,7 @@ async def compare_etfs(
     return {
         "etfs": result,
         "days": days,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -199,7 +201,7 @@ async def get_theme_detail(
 
     return {
         **data,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -226,7 +228,7 @@ async def get_all_etf_compare(
         "start_date": start_date,
         "etfs": data,
         "count": len(data),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -254,5 +256,5 @@ async def get_etf_holdings(
         "etf_code": etf_code,
         "holdings": holdings,
         "count": len(holdings),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }

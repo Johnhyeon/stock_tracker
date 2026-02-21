@@ -8,6 +8,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
+from core.timezone import now_kst
 from core.config import get_settings
 from models import (
     TelegramChannel,
@@ -115,7 +116,7 @@ class TelegramMonitorService:
                 "channel_name": channel_name,
                 "channel_username": channel_username,
                 "is_enabled": True,
-                "updated_at": datetime.utcnow(),
+                "updated_at": now_kst().replace(tzinfo=None),
             }
         ).returning(TelegramChannel)
 
@@ -139,14 +140,24 @@ class TelegramMonitorService:
             return True
         return False
 
-    async def check_messages(self, limit: int = 100) -> list[TelegramKeywordMatch]:
-        """모든 채널의 새 메시지를 확인하고 키워드 매칭."""
+    async def check_messages(self, limit: int = 100) -> list[dict]:
+        """모든 채널의 새 메시지를 확인하고 키워드 매칭.
+
+        Telethon과 SQLAlchemy async의 greenlet 충돌 방지를 위해
+        1단계: DB에서 데이터 로드 (순수 DB)
+        2단계: Telethon으로 메시지 수집 (순수 Telethon)
+        3단계: 매칭 결과 DB 저장 (순수 DB)
+
+        Returns:
+            plain dict 리스트 (커밋 후 ORM expire 문제 방지)
+        """
         from integrations.telegram.telethon_client import is_connected
         if not is_connected():
             connected = await self.connect()
             if not connected:
                 return []
 
+        # --- 1단계: DB에서 키워드/채널 로드 ---
         keywords = await self.get_active_keywords()
         if not keywords:
             logger.debug("모니터링할 키워드가 없습니다.")
@@ -157,118 +168,169 @@ class TelegramMonitorService:
             logger.debug("모니터링할 채널이 없습니다.")
             return []
 
-        matches = []
+        # ORM 객체를 plain dict로 변환 (greenlet 깨짐 방지)
+        channel_data = [
+            {
+                "id": ch.id,
+                "channel_id": ch.channel_id,
+                "channel_name": ch.channel_name,
+                "last_message_id": ch.last_message_id,
+            }
+            for ch in channels
+        ]
 
-        for channel in channels:
-            try:
-                channel_matches = await self._check_channel_messages(
-                    channel, keywords, limit
-                )
-                matches.extend(channel_matches)
-            except Exception as e:
-                logger.error(f"채널 메시지 확인 실패 ({channel.channel_name}): {e}")
-
-        return matches
-
-    async def _check_channel_messages(
-        self,
-        channel: TelegramChannel,
-        keywords: dict[str, dict],
-        limit: int,
-    ) -> list[TelegramKeywordMatch]:
-        """특정 채널의 메시지 확인."""
-        matches = []
+        # --- 2단계: Telethon으로 메시지 수집 ---
+        all_messages = {}  # channel_id -> [(msg_id, msg_text, msg_date), ...]
         client = await self._get_client()
 
-        try:
-            # 채널의 최근 메시지 조회
-            entity = await client.get_entity(channel.channel_id)
-            messages = await client.get_messages(
-                entity,
-                limit=limit,
-                min_id=channel.last_message_id,  # 마지막 확인 이후 메시지만
-            )
+        for ch in channel_data:
+            try:
+                entity = await client.get_entity(ch["channel_id"])
+                messages = await client.get_messages(
+                    entity,
+                    limit=limit,
+                    min_id=ch["last_message_id"],
+                )
+                if messages:
+                    all_messages[ch["channel_id"]] = [
+                        (msg.id, msg.text, msg.date)
+                        for msg in messages
+                        if msg.text
+                    ]
+            except Exception as e:
+                logger.error(f"채널 메시지 조회 실패 ({ch['channel_name']}): {e}")
 
-            if not messages:
-                return matches
+        # --- 3단계: 매칭 결과 DB 저장 ---
+        # no_autoflush로 SELECT 시 premature flush 방지
+        match_dicts = []
+        seen_keys = set()  # 인메모리 중복 추적
 
-            max_message_id = channel.last_message_id
-
-            for msg in messages:
-                if not msg.text:
+        with self.db.no_autoflush:
+            for ch in channel_data:
+                msgs = all_messages.get(ch["channel_id"], [])
+                if not msgs:
                     continue
 
-                max_message_id = max(max_message_id, msg.id)
+                max_message_id = ch["last_message_id"]
 
-                # 키워드 매칭
-                for keyword, info in keywords.items():
-                    if keyword in msg.text:
-                        # 중복 체크
-                        existing = await self.db.execute(
-                            select(TelegramKeywordMatch).where(
-                                and_(
-                                    TelegramKeywordMatch.channel_id == channel.channel_id,
-                                    TelegramKeywordMatch.message_id == msg.id,
-                                    TelegramKeywordMatch.matched_keyword == keyword,
+                for msg_id, msg_text, msg_date in msgs:
+                    max_message_id = max(max_message_id, msg_id)
+
+                    for keyword, info in keywords.items():
+                        if keyword in msg_text:
+                            dedup_key = (ch["channel_id"], msg_id, keyword)
+
+                            # 인메모리 중복 체크
+                            if dedup_key in seen_keys:
+                                continue
+
+                            # DB 중복 체크
+                            existing = await self.db.execute(
+                                select(TelegramKeywordMatch.id).where(
+                                    and_(
+                                        TelegramKeywordMatch.channel_id == ch["channel_id"],
+                                        TelegramKeywordMatch.message_id == msg_id,
+                                        TelegramKeywordMatch.matched_keyword == keyword,
+                                    )
                                 )
                             )
-                        )
-                        if existing.scalar_one_or_none():
-                            continue
+                            if existing.scalar_one_or_none():
+                                seen_keys.add(dedup_key)
+                                continue
 
-                        # 매칭 기록 저장
-                        match_record = TelegramKeywordMatch(
-                            channel_id=channel.channel_id,
-                            channel_name=channel.channel_name,
-                            message_id=msg.id,
-                            message_text=msg.text[:1000],  # 최대 1000자
-                            message_date=msg.date,
-                            matched_keyword=keyword,
-                            stock_code=info.get("stock_code"),
-                            idea_id=info.get("idea_id"),
-                            notification_sent=False,
-                        )
-                        self.db.add(match_record)
-                        matches.append(match_record)
+                            match_record = TelegramKeywordMatch(
+                                channel_id=ch["channel_id"],
+                                channel_name=ch["channel_name"],
+                                message_id=msg_id,
+                                message_text=msg_text[:1000],
+                                message_date=msg_date,
+                                matched_keyword=keyword,
+                                stock_code=info.get("stock_code"),
+                                idea_id=info.get("idea_id"),
+                                notification_sent=False,
+                            )
+                            self.db.add(match_record)
+                            # plain dict로 변환 (커밋 후 ORM expire 문제 방지)
+                            match_dicts.append({
+                                "id": match_record.id,
+                                "channel_name": ch["channel_name"],
+                                "message_text": msg_text[:1000],
+                                "message_date": msg_date,
+                                "matched_keyword": keyword,
+                                "stock_code": info.get("stock_code"),
+                            })
+                            seen_keys.add(dedup_key)
+                            logger.info(f"키워드 매칭: '{keyword}' in {ch['channel_name']}")
 
-                        logger.info(
-                            f"키워드 매칭: '{keyword}' in {channel.channel_name}"
-                        )
+                # 마지막 메시지 ID 업데이트 (메시지가 있으면 매칭 여부와 무관하게)
+                if max_message_id > ch["last_message_id"]:
+                    stmt = (
+                        select(TelegramChannel)
+                        .where(TelegramChannel.id == ch["id"])
+                    )
+                    result = await self.db.execute(stmt)
+                    db_channel = result.scalar_one_or_none()
+                    if db_channel:
+                        db_channel.last_message_id = max_message_id
 
-            # 마지막 메시지 ID 업데이트
-            if max_message_id > channel.last_message_id:
-                channel.last_message_id = max_message_id
-
+        try:
             await self.db.commit()
-
         except Exception as e:
-            logger.error(f"채널 메시지 조회 실패 ({channel.channel_name}): {e}")
+            logger.error(f"매칭 결과 저장 실패: {e}")
             await self.db.rollback()
+            return []  # 커밋 실패 시 빈 리스트 반환 (알림 발송 방지)
 
-        return matches
+        return match_dicts
 
-    async def send_notifications(self, matches: list[TelegramKeywordMatch]) -> int:
-        """매칭된 키워드에 대해 알림 발송."""
+    async def send_notifications(self, matches: list[dict]) -> int:
+        """매칭된 키워드에 대해 알림 발송.
+
+        동일 키워드에 대해 24시간 내 중복 알림을 방지합니다.
+        matches는 check_messages에서 반환한 plain dict 리스트입니다.
+        """
         telegram_client = get_telegram_client()
         if not telegram_client.is_configured:
             logger.warning("텔레그램 봇이 설정되지 않아 알림을 발송할 수 없습니다.")
             return 0
 
+        # 최근 24시간 내 이미 발송된 키워드 조회 (중복 알림 방지)
+        since = now_kst().replace(tzinfo=None) - timedelta(hours=24)
+        recently_sent_stmt = (
+            select(TelegramKeywordMatch.matched_keyword)
+            .where(and_(
+                TelegramKeywordMatch.notification_sent == True,
+                TelegramKeywordMatch.created_at >= since,
+            ))
+            .distinct()
+        )
+        result = await self.db.execute(recently_sent_stmt)
+        recently_notified = {r[0] for r in result}
+
         sent_count = 0
 
-        for match in matches:
-            if match.notification_sent:
+        for match_data in matches:
+            keyword = match_data["matched_keyword"]
+
+            # 24시간 내 이미 같은 키워드로 알림 발송됨 → 스킵
+            if keyword in recently_notified:
+                # DB에서 notification_sent=True로 마킹 (재시도 방지)
+                match_stmt = select(TelegramKeywordMatch).where(
+                    TelegramKeywordMatch.id == match_data["id"]
+                )
+                match_result = await self.db.execute(match_stmt)
+                db_match = match_result.scalar_one_or_none()
+                if db_match:
+                    db_match.notification_sent = True
                 continue
 
             try:
-                # 메시지 내용 요약 (100자)
-                text_preview = match.message_text[:100]
-                if len(match.message_text) > 100:
+                text_preview = match_data["message_text"][:100]
+                if len(match_data["message_text"]) > 100:
                     text_preview += "..."
 
-                title = f"📢 종목 언급 감지: {match.matched_keyword}"
-                message = f"""채널: {match.channel_name}
-시간: {match.message_date.strftime('%Y-%m-%d %H:%M')}
+                title = f"📢 종목 언급 감지: {keyword}"
+                message = f"""채널: {match_data['channel_name']}
+시간: {match_data['message_date'].strftime('%Y-%m-%d %H:%M')}
 
 내용:
 {text_preview}"""
@@ -288,21 +350,29 @@ class TelegramMonitorService:
                     message=message,
                     is_success=True,
                     related_entity_type="telegram_keyword_match",
-                    related_entity_id=str(match.id),
+                    related_entity_id=str(match_data["id"]),
                 )
                 self.db.add(log)
 
-                match.notification_sent = True
+                # DB에서 notification_sent=True로 마킹
+                match_stmt = select(TelegramKeywordMatch).where(
+                    TelegramKeywordMatch.id == match_data["id"]
+                )
+                match_result = await self.db.execute(match_stmt)
+                db_match = match_result.scalar_one_or_none()
+                if db_match:
+                    db_match.notification_sent = True
+
+                recently_notified.add(keyword)
                 sent_count += 1
 
             except Exception as e:
-                logger.error(f"알림 발송 실패 ({match.matched_keyword}): {e}")
+                logger.error(f"알림 발송 실패 ({keyword}): {e}")
 
-                # 실패 로그 저장
                 log = NotificationLog(
                     alert_type=AlertType.TELEGRAM_KEYWORD,
                     channel=NotificationChannel.TELEGRAM,
-                    title=f"종목 언급 감지: {match.matched_keyword}",
+                    title=f"종목 언급 감지: {keyword}",
                     message=str(e),
                     is_success=False,
                     error_message=str(e),
@@ -348,7 +418,7 @@ class TelegramMonitorService:
         limit: int = 50,
     ) -> list[TelegramKeywordMatch]:
         """최근 매칭 기록 조회."""
-        since = datetime.utcnow() - timedelta(days=days)
+        since = now_kst().replace(tzinfo=None) - timedelta(days=days)
         stmt = (
             select(TelegramKeywordMatch)
             .where(TelegramKeywordMatch.created_at >= since)

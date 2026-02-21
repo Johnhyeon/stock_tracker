@@ -4,8 +4,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.database import get_db
+from core.database import get_db, get_async_db
 from models.disclosure import DisclosureType, DisclosureImportance
 from services.disclosure_service import DisclosureService
 from schemas.disclosure import (
@@ -104,7 +105,7 @@ def mark_all_disclosures_read(
 @router.post("/collect", response_model=DisclosureCollectResponse)
 async def collect_disclosures(
     request: DisclosureCollectRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """공시 수집 (수동 트리거).
 

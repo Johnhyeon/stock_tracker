@@ -63,7 +63,7 @@ class TelegramKeywordMatch(Base):
     __table_args__ = (
         Index("ix_telegram_keyword_matches_created", "created_at"),
         Index("ix_telegram_keyword_matches_keyword", "matched_keyword"),
-        Index("ix_telegram_keyword_matches_channel_msg", "channel_id", "message_id", unique=True),
+        Index("ix_telegram_keyword_matches_channel_msg", "channel_id", "message_id", "matched_keyword", unique=True),
     )
 
     def __repr__(self):

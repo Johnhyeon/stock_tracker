@@ -3,10 +3,12 @@ import logging
 
 from core.database import async_session_maker
 from services.telegram_monitor_service import TelegramMonitorService
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("telegram_monitor")
 async def monitor_telegram_channels():
     """텔레그램 채널 모니터링 및 키워드 알림 발송.
 

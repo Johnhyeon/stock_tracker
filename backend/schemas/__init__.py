@@ -10,6 +10,8 @@ from .position import (
     PositionExit,
     PositionAddBuy,
     PositionPartialExit,
+    PositionUpdate,
+    TradeUpdate,
     PositionResponse,
 )
 from .snapshot import SnapshotCreate, SnapshotResponse
@@ -48,6 +50,8 @@ __all__ = [
     "PositionExit",
     "PositionAddBuy",
     "PositionPartialExit",
+    "PositionUpdate",
+    "TradeUpdate",
     "PositionResponse",
     "SnapshotCreate",
     "SnapshotResponse",

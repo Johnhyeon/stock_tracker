@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from pydantic import BaseModel
 
 from core.database import get_db
@@ -38,6 +38,8 @@ def search_stocks(
         - q=ㅎㅇㄴㅅ → SK하이닉스
     """
     query = q.strip()
+    # 와일드카드 이스케이프 (%, _ 문자를 리터럴로 처리)
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     # 초성 검색인지 확인
     if is_chosung_only(query):
@@ -54,21 +56,22 @@ def search_stocks(
             .all()
         )
     else:
-        # 일반 검색: 코드 또는 이름으로 검색
+        # 일반 검색: 코드 또는 이름으로 검색 (대소문자 무시)
+        query_lower = query.lower()
         results = (
             db.query(Stock)
             .filter(
                 or_(
-                    Stock.code.contains(query),
-                    Stock.name.contains(query),
+                    Stock.code.ilike(f"%{escaped}%"),
+                    Stock.name.ilike(f"%{escaped}%"),
                 )
             )
             .order_by(
-                # 정확히 일치하는 것 우선
-                Stock.code != query,
-                Stock.name != query,
+                # 정확히 일치하는 것 우선 (대소문자 무시)
+                func.lower(Stock.code) != query_lower,
+                func.lower(Stock.name) != query_lower,
                 # 코드로 시작하는 것 우선
-                ~Stock.code.startswith(query),
+                ~Stock.code.ilike(f"{escaped}%"),
                 # 이름순
                 Stock.name,
             )

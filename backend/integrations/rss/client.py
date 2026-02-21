@@ -1,5 +1,7 @@
 """RSS 피드 파서 클라이언트."""
 import logging
+import re
+import ssl
 from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
@@ -10,6 +12,25 @@ import feedparser
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# SSL 레거시 재협상이 필요한 서버용 (연합뉴스 등)
+_LEGACY_SSL_CTX: Optional[ssl.SSLContext] = None
+
+
+def _get_legacy_ssl_ctx() -> ssl.SSLContext:
+    """레거시 SSL 서버 호환 SSLContext 반환."""
+    global _LEGACY_SSL_CTX
+    if _LEGACY_SSL_CTX is None:
+        ctx = ssl.create_default_context()
+        ctx.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
+        _LEGACY_SSL_CTX = ctx
+    return _LEGACY_SSL_CTX
+
+
+def _sanitize_xml(text: str) -> str:
+    """XML에서 허용되지 않는 제어 문자 제거."""
+    # XML 1.0 허용: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
 
 # 기본 RSS 피드 소스
 DEFAULT_RSS_FEEDS = {
@@ -44,8 +65,31 @@ class RSSClient:
         self._executor = ThreadPoolExecutor(max_workers=4)
 
     def _parse_feed_sync(self, url: str) -> feedparser.FeedParserDict:
-        """동기적으로 피드 파싱 (feedparser가 동기 라이브러리이므로)."""
-        return feedparser.parse(url)
+        """동기적으로 피드 파싱.
+
+        httpx로 본문을 먼저 받아 제어 문자를 정리한 뒤 feedparser로 파싱.
+        SSL 레거시 서버도 처리.
+        """
+        try:
+            # 먼저 일반 SSL로 시도, 실패하면 레거시 SSL로 재시도
+            try:
+                resp = httpx.get(url, timeout=self.timeout, follow_redirects=True)
+            except (httpx.ConnectError, Exception) as ssl_err:
+                if "SSL" in str(ssl_err) or "legacy" in str(ssl_err).lower():
+                    resp = httpx.get(
+                        url, timeout=self.timeout, follow_redirects=True,
+                        verify=_get_legacy_ssl_ctx(),
+                    )
+                else:
+                    raise
+
+            resp.raise_for_status()
+            raw = resp.text
+            cleaned = _sanitize_xml(raw)
+            return feedparser.parse(cleaned)
+        except Exception as e:
+            logger.warning(f"RSS httpx 다운로드 실패 ({url}): {e}, feedparser 직접 시도")
+            return feedparser.parse(url)
 
     def _parse_date(self, entry: dict) -> Optional[datetime]:
         """피드 엔트리에서 날짜 파싱."""

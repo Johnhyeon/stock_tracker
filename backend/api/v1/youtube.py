@@ -1,6 +1,5 @@
 """YouTube API 엔드포인트."""
 import asyncio
-from datetime import datetime
 from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -8,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.timezone import now_kst
 from services.youtube_service import YouTubeService
 from schemas.youtube import (
     YouTubeMentionResponse,
@@ -19,6 +19,9 @@ from schemas.youtube import (
     HotCollectRequest,
     HotCollectResponse,
     RisingTickerResponse,
+    MediaTimelineResponse,
+    MentionBacktestResponse,
+    OverheatResponse,
 )
 
 router = APIRouter()
@@ -118,6 +121,50 @@ def get_rising_tickers(
     return [RisingTickerResponse(**r) for r in rising]
 
 
+@router.get("/stock-timeline/{stock_code}", response_model=MediaTimelineResponse)
+def get_stock_timeline(
+    stock_code: str,
+    days_back: int = Query(default=90, ge=7, le=365, description="분석 기간 (일)"),
+    db: Session = Depends(get_db),
+):
+    """종목별 미디어 타임라인 (가격 + 언급 결합)."""
+    service = YouTubeService(db)
+    result = service.get_stock_timeline(stock_code=stock_code, days_back=days_back)
+    return MediaTimelineResponse(**result)
+
+
+@router.get("/mention-backtest", response_model=MentionBacktestResponse)
+def get_mention_backtest(
+    days_back: int = Query(default=90, ge=7, le=365, description="분석 기간"),
+    min_mentions: int = Query(default=3, ge=1, le=20, description="최소 언급 횟수"),
+    holding_days: str = Query(default="3,7,14", description="보유 기간 (콤마 구분)"),
+    db: Session = Depends(get_db),
+):
+    """유튜브 언급 후 수익률 백테스트."""
+    service = YouTubeService(db)
+    result = service.get_mention_backtest(
+        days_back=days_back,
+        min_mentions=min_mentions,
+        holding_days_str=holding_days,
+    )
+    return MentionBacktestResponse(**result)
+
+
+@router.get("/overheat", response_model=OverheatResponse)
+def get_overheat_stocks(
+    recent_days: int = Query(default=3, ge=1, le=14, description="최근 기간 (일)"),
+    baseline_days: int = Query(default=30, ge=14, le=90, description="기준 기간 (일)"),
+    db: Session = Depends(get_db),
+):
+    """유튜브 과열 경고."""
+    service = YouTubeService(db)
+    result = service.get_overheat_stocks(
+        recent_days=recent_days,
+        baseline_days=baseline_days,
+    )
+    return OverheatResponse(**result)
+
+
 @router.get("/{mention_id}", response_model=YouTubeMentionResponse)
 def get_youtube_mention(
     mention_id: UUID,
@@ -132,39 +179,37 @@ def get_youtube_mention(
 
 
 async def _run_collect_videos(hours_back: int):
-    """백그라운드에서 YouTube 영상 수집 실행."""
+    """백그라운드에서 YouTube 영상 수집 실행 (비동기 DB)."""
     global _youtube_collect_status
-    from core.database import SessionLocal
+    from core.database import async_session_maker
 
-    db = SessionLocal()
-    try:
-        service = YouTubeService(db)
-        result = await service.collect_videos(hours_back=hours_back)
-        _youtube_collect_status["result"] = result
-    except Exception as e:
-        _youtube_collect_status["error"] = str(e)
-    finally:
-        _youtube_collect_status["is_running"] = False
-        _youtube_collect_status["completed_at"] = datetime.now().isoformat()
-        db.close()
+    async with async_session_maker() as db:
+        try:
+            service = YouTubeService(db)
+            result = await service.collect_videos(hours_back=hours_back)
+            _youtube_collect_status["result"] = result
+        except Exception as e:
+            _youtube_collect_status["error"] = str(e)
+        finally:
+            _youtube_collect_status["is_running"] = False
+            _youtube_collect_status["completed_at"] = now_kst().isoformat()
 
 
 async def _run_collect_hot_videos(hours_back: int, mode: str):
-    """백그라운드에서 핫 영상 수집 실행."""
+    """백그라운드에서 핫 영상 수집 실행 (비동기 DB)."""
     global _youtube_collect_status
-    from core.database import SessionLocal
+    from core.database import async_session_maker
 
-    db = SessionLocal()
-    try:
-        service = YouTubeService(db)
-        result = await service.collect_hot_videos(hours_back=hours_back, mode=mode)
-        _youtube_collect_status["result"] = result
-    except Exception as e:
-        _youtube_collect_status["error"] = str(e)
-    finally:
-        _youtube_collect_status["is_running"] = False
-        _youtube_collect_status["completed_at"] = datetime.now().isoformat()
-        db.close()
+    async with async_session_maker() as db:
+        try:
+            service = YouTubeService(db)
+            result = await service.collect_hot_videos(hours_back=hours_back, mode=mode)
+            _youtube_collect_status["result"] = result
+        except Exception as e:
+            _youtube_collect_status["error"] = str(e)
+        finally:
+            _youtube_collect_status["is_running"] = False
+            _youtube_collect_status["completed_at"] = now_kst().isoformat()
 
 
 @router.get("/collect/status")
@@ -193,7 +238,7 @@ async def collect_youtube_videos(
 
     _youtube_collect_status = {
         "is_running": True,
-        "started_at": datetime.now().isoformat(),
+        "started_at": now_kst().isoformat(),
         "completed_at": None,
         "result": None,
         "error": None,
@@ -235,7 +280,7 @@ async def collect_hot_videos(
 
     _youtube_collect_status = {
         "is_running": True,
-        "started_at": datetime.now().isoformat(),
+        "started_at": now_kst().isoformat(),
         "completed_at": None,
         "result": None,
         "error": None,

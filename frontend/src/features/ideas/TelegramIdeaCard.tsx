@@ -4,6 +4,8 @@ import { Card, CardContent } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import SentimentIndicator from '../../components/ui/SentimentIndicator'
 import HashtagChips from '../../components/ui/HashtagChips'
+import MiniSparkline, { type SparklineMap, getSparklineSinceDate } from '../../components/MiniSparkline'
+import { WatchlistStar } from '../../components/WatchlistStar'
 import type { TelegramIdea } from '../../types/telegram_idea'
 
 interface TelegramIdeaCardProps {
@@ -13,6 +15,7 @@ interface TelegramIdeaCardProps {
   onHashtagClick?: (hashtag: string) => void
   compact?: boolean  // 컴팩트 모드 (그룹 뷰에서 사용)
   hideStock?: boolean  // 종목명 숨기기 (그룹 헤더에서 이미 표시)
+  sparklineMap?: SparklineMap
 }
 
 // 메시지에서 해시태그 하이라이트
@@ -55,6 +58,7 @@ export default function TelegramIdeaCard({
   onHashtagClick,
   compact = false,
   hideStock = false,
+  sparklineMap = {},
 }: TelegramIdeaCardProps) {
   const [expanded, setExpanded] = useState(false)
 
@@ -75,18 +79,23 @@ export default function TelegramIdeaCard({
             {idea.is_forwarded && idea.forward_from_name && (
               <button
                 onClick={() => onAuthorClick?.(idea.forward_from_name!)}
-                className="text-xs text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+                className="text-xs text-gray-600 dark:text-t-text-muted hover:text-primary-600 dark:hover:text-primary-400"
               >
                 {idea.forward_from_name}
               </button>
             )}
             {!hideStock && idea.stock_name && (
-              <button
-                onClick={() => idea.stock_code && onStockClick?.(idea.stock_code)}
-                className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                {idea.stock_name}
-              </button>
+              <>
+                {idea.stock_code && (
+                  <WatchlistStar stockCode={idea.stock_code!} stockName={idea.stock_name || idea.stock_code!} />
+                )}
+                <button
+                  onClick={() => idea.stock_code && onStockClick?.(idea.stock_code)}
+                  className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
+                >
+                  {idea.stock_name}
+                </button>
+              </>
             )}
             {idea.sentiment && (
               <div className="flex items-center gap-1">
@@ -94,14 +103,14 @@ export default function TelegramIdeaCard({
               </div>
             )}
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-500 dark:text-t-text-muted">
             {formatDate(idea.original_date)}
           </span>
         </div>
 
         {/* 메시지 내용 */}
         <div
-          className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
+          className="text-sm text-gray-700 dark:text-t-text-secondary whitespace-pre-wrap"
           onClick={() => isLongMessage && setExpanded(!expanded)}
         >
           {highlightHashtags(displayText)}
@@ -142,25 +151,30 @@ export default function TelegramIdeaCard({
           <div className="flex items-center gap-2 flex-wrap">
             {!hideStock && (
               idea.stock_name ? (
-                <button
-                  onClick={() => idea.stock_code && onStockClick?.(idea.stock_code)}
-                  className="font-semibold text-primary-600 dark:text-primary-400 hover:underline"
-                >
-                  {idea.stock_name}
+                <>
                   {idea.stock_code && (
-                    <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">
-                      ({idea.stock_code})
-                    </span>
+                    <WatchlistStar stockCode={idea.stock_code!} stockName={idea.stock_name || idea.stock_code!} />
                   )}
-                </button>
+                  <button
+                    onClick={() => idea.stock_code && onStockClick?.(idea.stock_code)}
+                    className="font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                  >
+                    {idea.stock_name}
+                    {idea.stock_code && (
+                      <span className="text-gray-500 dark:text-t-text-muted text-sm ml-1">
+                        ({idea.stock_code})
+                      </span>
+                    )}
+                  </button>
+                </>
               ) : (
-                <span className="text-gray-500 dark:text-gray-400 text-sm">종목 미지정</span>
+                <span className="text-gray-500 dark:text-t-text-muted text-sm">종목 미지정</span>
               )
             )}
             {idea.stock_code && (
               <Link
                 to={`/stocks/${idea.stock_code}`}
-                className="text-xs text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400"
+                className="text-xs text-gray-500 hover:text-primary-600 dark:text-t-text-muted dark:hover:text-primary-400"
               >
                 차트
               </Link>
@@ -173,14 +187,38 @@ export default function TelegramIdeaCard({
               <Badge variant="default" size="sm">타인</Badge>
             )}
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+          <span className="text-xs text-gray-500 dark:text-t-text-muted whitespace-nowrap">
             {formatDate(idea.original_date)}
           </span>
         </div>
 
+        {/* 가격 추이 스파크라인 */}
+        {idea.stock_code && sparklineMap[idea.stock_code] && (() => {
+          const sp = sparklineMap[idea.stock_code!]
+          const data = getSparklineSinceDate(sp, idea.original_date)
+          if (!data) return null
+          const up = data.changePct >= 0
+          return (
+            <div className="flex items-center gap-2 mb-3 px-1 py-1.5 bg-gray-50 dark:bg-t-bg-elevated/50 rounded">
+              <MiniSparkline prices={data.prices} width={80} height={24} />
+              <div className="flex flex-col">
+                <span className={`text-xs font-mono font-bold ${up ? 'text-red-500' : 'text-blue-500'}`}>
+                  {up ? '+' : ''}{data.changePct.toFixed(1)}%
+                </span>
+                <span className="text-[9px] text-gray-400 dark:text-t-text-muted">언급 이후</span>
+              </div>
+              <div className="ml-auto text-right">
+                <span className="text-[10px] text-gray-500 dark:text-t-text-muted">
+                  {sp.closes[sp.closes.length - 1]?.toLocaleString()}원
+                </span>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* 본문: 메시지 내용 */}
         <div
-          className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-3"
+          className="text-sm text-gray-700 dark:text-t-text-secondary whitespace-pre-wrap mb-3"
           onClick={() => isLongMessage && setExpanded(!expanded)}
         >
           {highlightHashtags(displayText)}
@@ -210,12 +248,12 @@ export default function TelegramIdeaCard({
         )}
 
         {/* 푸터: 발신자 + 감정 분석 */}
-        <div className="flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-gray-100 dark:border-t-border">
           <div className="flex items-center gap-2">
             {idea.is_forwarded && idea.forward_from_name && (
               <button
                 onClick={() => onAuthorClick?.(idea.forward_from_name!)}
-                className="text-xs text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+                className="text-xs text-gray-600 dark:text-t-text-muted hover:text-primary-600 dark:hover:text-primary-400"
               >
                 from: {idea.forward_from_name}
               </button>

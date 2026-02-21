@@ -1,7 +1,9 @@
 """ETF OHLCV 수집 스케줄러 작업."""
+import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from pathlib import Path
 
 from pykrx import stock
@@ -11,6 +13,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from core.config import get_settings
 from core.database import Base
 from models.etf_ohlcv import EtfOHLCV
+from scheduler.job_tracker import track_job_execution
+
+MAX_PYKRX_WORKERS = 5  # pykrx 동시 요청 수 (KRX 차단 방지)
 
 logger = logging.getLogger(__name__)
 
@@ -120,13 +125,25 @@ def save_to_db(engine, etf_code: str, etf_name: str, ohlcv_data: list[dict]) -> 
     return saved_count
 
 
-async def collect_etf_ohlcv_daily():
-    """ETF OHLCV 일별 수집.
+def _collect_single_etf(engine, code: str, name: str, start_str: str, end_str: str) -> tuple[int, int]:
+    """단일 ETF OHLCV 수집 (워커 스레드에서 실행).
 
-    매일 장 마감 후 실행되어 당일 데이터를 수집합니다.
+    Returns:
+        (saved_count, 0) on success, (0, 1) on failure
     """
-    logger.info("ETF OHLCV 일별 수집 시작")
+    try:
+        ohlcv = get_etf_ohlcv_pykrx(code, start_str, end_str)
+        if ohlcv:
+            saved = save_to_db(engine, code, name, ohlcv)
+            return saved, 0
+        return 0, 1
+    except Exception as e:
+        logger.warning(f"{name}({code}) 수집 실패: {e}")
+        return 0, 1
 
+
+def _collect_etf_ohlcv_sync():
+    """ETF OHLCV 수집 동기 로직 (병렬 처리)."""
     settings = get_settings()
     engine = create_engine(settings.database_url)
 
@@ -135,10 +152,11 @@ async def collect_etf_ohlcv_daily():
 
     # ETF 목록 로드
     etf_list = load_etf_codes()
-    logger.info(f"수집 대상 ETF: {len(etf_list)}개")
+    logger.info(f"수집 대상 ETF: {len(etf_list)}개 (워커 {MAX_PYKRX_WORKERS}개 병렬)")
 
     # 최근 5일치 수집 (장 마감 후 당일 + 누락분 보정)
-    end_date = datetime.now()
+    from core.timezone import now_kst
+    end_date = now_kst()
     start_date = end_date - timedelta(days=5)
     start_str = start_date.strftime("%Y%m%d")
     end_str = end_date.strftime("%Y%m%d")
@@ -147,22 +165,43 @@ async def collect_etf_ohlcv_daily():
     fail_count = 0
     total_records = 0
 
-    for etf in etf_list:
-        code = etf["code"]
-        name = etf["name"]
+    # ThreadPoolExecutor로 pykrx 호출 병렬화
+    with ThreadPoolExecutor(max_workers=MAX_PYKRX_WORKERS) as executor:
+        futures = {
+            executor.submit(
+                _collect_single_etf, engine, etf["code"], etf["name"], start_str, end_str
+            ): etf
+            for etf in etf_list
+        }
 
-        try:
-            ohlcv = get_etf_ohlcv_pykrx(code, start_str, end_str)
-
-            if ohlcv:
-                saved = save_to_db(engine, code, name, ohlcv)
-                total_records += saved
-                success_count += 1
-            else:
+        from concurrent.futures import as_completed
+        for future in as_completed(futures):
+            saved, failed = future.result()
+            total_records += saved
+            if failed:
                 fail_count += 1
+            else:
+                success_count += 1
 
-        except Exception as e:
-            logger.warning(f"{name}({code}) 수집 실패: {e}")
-            fail_count += 1
+    engine.dispose()
+    return success_count, fail_count, total_records
+
+
+@track_job_execution("etf_ohlcv_collect")
+async def collect_etf_ohlcv_daily():
+    """ETF OHLCV 일별 수집.
+
+    매일 장 마감 후 실행되어 당일 데이터를 수집합니다.
+    pykrx + sync DB 전체가 동기이므로 스레드풀에서 병렬 실행합니다.
+    """
+    from core.timezone import today_kst
+    today = today_kst()
+    if today.weekday() >= 5:
+        logger.info(f"ETF OHLCV 수집 스킵: 주말 ({today})")
+        return
+
+    logger.info("ETF OHLCV 일별 수집 시작")
+
+    success_count, fail_count, total_records = await asyncio.to_thread(_collect_etf_ohlcv_sync)
 
     logger.info(f"ETF OHLCV 수집 완료: 성공 {success_count}, 실패 {fail_count}, 레코드 {total_records}")

@@ -1,22 +1,29 @@
 """OHLCV 일별 수집 작업."""
 import logging
 import asyncio
-from datetime import date
 
 from sqlalchemy import select, distinct
 
 from core.database import async_session_maker
+from core.timezone import today_kst
 from models import StockOHLCV, InvestmentIdea
-from services.ohlcv_service import OHLCVService
+from services.ohlcv_service import OHLCVService, is_trading_day
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("ohlcv_daily_collect")
 async def collect_ohlcv_daily():
     """저장된 모든 종목의 OHLCV 일별 업데이트.
 
     매일 장 마감 후 실행되어 당일 데이터를 수집합니다.
     """
+    today = today_kst()
+    if not is_trading_day(today):
+        logger.info(f"OHLCV 일별 수집 스킵: 비거래일 ({today})")
+        return
+
     logger.info("OHLCV 일별 수집 시작")
 
     async with async_session_maker() as session:
@@ -51,6 +58,7 @@ async def collect_ohlcv_daily():
         logger.info(f"OHLCV 일별 수집 완료: 성공 {success}, 실패 {failed}")
 
 
+@track_job_execution("ohlcv_new_ideas_collect")
 async def collect_ohlcv_for_new_ideas():
     """신규 아이디어 종목의 OHLCV 초기 수집.
 
@@ -70,7 +78,7 @@ async def collect_ohlcv_for_new_ideas():
         for tickers in rows:
             if tickers:
                 for ticker in tickers:
-                    match = re.search(r'\((\d{6})\)', ticker)
+                    match = re.search(r'\(([A-Za-z0-9]{6})\)', ticker)
                     if match:
                         idea_codes.add(match.group(1))
 

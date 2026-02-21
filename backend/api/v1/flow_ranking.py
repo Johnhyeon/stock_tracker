@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import datetime, date
 from typing import Optional
 
+from core.timezone import now_kst
+
 from cachetools import TTLCache
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
@@ -122,7 +124,7 @@ async def get_top_flow_stocks(
         "count": len(stocks),
         "days": days,
         "investor_type": investor_type,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -205,7 +207,7 @@ async def get_bottom_flow_stocks(
         "count": len(stocks),
         "days": days,
         "investor_type": investor_type,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -307,7 +309,7 @@ async def get_consecutive_buy_stocks(
         "count": len(stocks[:limit]),
         "min_days": min_days,
         "investor_type": investor_type,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
     _consecutive_cache[cache_key] = result
     return result
@@ -446,7 +448,7 @@ async def get_spike_flow_stocks(
         "min_amount": min_amount,
         "investor_type": investor_type,
         "ref_date": ref_date.isoformat() if ref_date else None,
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }
 
 
@@ -476,7 +478,7 @@ async def get_realtime_spike_stocks(
         limit: 반환할 종목 수
         investor_type: all(외인+기관), foreign(외국인), institution(기관)
     """
-    now = datetime.now()
+    now = now_kst()
     is_market_open = (
         now.weekday() < 5  # 월-금
         and 9 <= now.hour < 16  # 09:00 ~ 15:59
@@ -541,7 +543,7 @@ async def get_realtime_spike_stocks(
             "investor_type": investor_type,
             "market_status": "open" if is_market_open else "closed",
             "time_ratio": round(time_ratio, 2),
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": now_kst().isoformat(),
         }
 
     # 2. KIS API로 당일 실시간 수급 조회
@@ -552,7 +554,7 @@ async def get_realtime_spike_stocks(
     realtime_data = {}
     batch_size = 10
 
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = now_kst().strftime("%Y-%m-%d")
 
     async def fetch_single(code: str):
         try:
@@ -645,5 +647,5 @@ async def get_realtime_spike_stocks(
         "investor_type": investor_type,
         "market_status": "open" if is_market_open else "closed",
         "time_ratio": round(time_ratio, 2),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": now_kst().isoformat(),
     }

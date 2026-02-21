@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { useDataStore } from '../../store/useDataStore'
+import { useSchedulerStore } from '../../store/useSchedulerStore'
 import { Card } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 
 export default function SchedulerStatus() {
-  const { schedulerStatus, schedulerLoading, fetchSchedulerStatus } = useDataStore()
+  const { status: schedulerStatus, loading: schedulerLoading, fetchStatus: fetchSchedulerStatus } = useSchedulerStore()
 
   useEffect(() => {
     fetchSchedulerStatus()

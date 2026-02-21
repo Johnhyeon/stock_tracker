@@ -203,8 +203,8 @@ export type AlertType =
   | 'target_reached'
   | 'fundamental_deterioration'
   | 'time_expired'
-  | 'trader_new_mention'
-  | 'trader_cross_check'
+  | 'expert_new_mention'
+  | 'expert_cross_check'
   | 'custom'
 
 export type NotificationChannel = 'telegram' | 'email' | 'both'
@@ -299,9 +299,9 @@ export interface FileImportResult {
   errors: string[]
 }
 
-// Trader Watchlist Types
+// Expert Watchlist Types
 
-export interface TraderHotStock {
+export interface ExpertHotStock {
   stock_name: string
   stock_code: string | null
   mention_count: number
@@ -320,7 +320,7 @@ export interface TraderHotStock {
   weighted_score: number | null
 }
 
-export interface TraderRisingStock {
+export interface ExpertRisingStock {
   stock_name: string
   stock_code: string | null
   recent_mentions: number
@@ -335,7 +335,7 @@ export interface TraderRisingStock {
   weighted_score: number | null
 }
 
-export interface TraderPerformanceStats {
+export interface ExpertPerformanceStats {
   total_stocks: number
   avg_performance: number
   win_rate: number
@@ -350,14 +350,14 @@ export interface TraderPerformanceStats {
   performance_14d: number | null
 }
 
-export interface TraderSyncResponse {
+export interface ExpertSyncResponse {
   total_stocks: number
   total_mentions: number
   new_mentions: number
   updated_stocks: number
 }
 
-export interface TraderNewMention {
+export interface ExpertNewMention {
   stock_name: string
   stock_code: string | null
   mention_date: string
@@ -365,12 +365,38 @@ export interface TraderNewMention {
   source_link: string | null
 }
 
-export interface TraderCrossCheck {
+export interface ExpertCrossCheck {
   stock_name: string
   stock_code: string
   idea_title: string
-  trader_mention_count: number
+  expert_mention_count: number
   last_mentioned: string
+}
+
+// Expert Performance Detail Types
+export interface ExpertPerformanceDetailItem {
+  stock_name: string
+  stock_code: string
+  mention_date: string
+  mention_price: number
+  current_price: number
+  return_rate: number
+  return_1d: number | null
+  return_3d: number | null
+  return_7d: number | null
+  return_14d: number | null
+  mention_count: number
+  rank: number
+}
+
+export interface ExpertPerformanceDetailResponse {
+  items: ExpertPerformanceDetailItem[]
+  summary: {
+    total: number
+    avg_return: number
+    win_rate: number
+    median_return: number
+  }
 }
 
 // Theme Rotation Types
@@ -378,7 +404,7 @@ export interface TraderCrossCheck {
 export interface ThemeStock {
   code: string
   name: string | null
-  source?: string // youtube, trader, both
+  source?: string // youtube, expert, both
   mentions: number
   price_change: number | null
   volume: number | null
@@ -389,7 +415,7 @@ export interface HotTheme {
   total_score: number
   stock_count: number
   youtube_mentions: number
-  trader_mentions: number
+  expert_mentions: number
   avg_price_change: number
   total_volume: number
   stocks: ThemeStock[]
@@ -424,4 +450,92 @@ export interface StockThemesResponse {
   stock_code: string
   themes: string[]
   theme_count: number
+}
+
+// YouTube 미디어 타임라인
+
+export interface MediaTimelineDay {
+  date: string
+  close_price: number | null
+  mention_count: number
+  total_views: number
+}
+
+export interface MediaTimelineVideo {
+  video_id: string
+  video_title: string
+  channel_name: string | null
+  published_at: string
+  view_count: number | null
+  thumbnail_url: string | null
+}
+
+export interface MediaTimelineSummary {
+  total_mentions: number
+  mention_days: number
+  avg_daily: number
+  price_at_first_mention: number | null
+  price_now: number | null
+  price_change_pct: number | null
+}
+
+export interface MediaTimelineResponse {
+  stock_code: string
+  stock_name: string | null
+  daily: MediaTimelineDay[]
+  videos: MediaTimelineVideo[]
+  summary: MediaTimelineSummary
+}
+
+// YouTube 언급 백테스트
+
+export interface HoldingPeriodStats {
+  sample_count: number
+  avg_return: number
+  median: number
+  win_rate: number
+  max_return: number
+  max_loss: number
+}
+
+export interface MentionBacktestItem {
+  stock_code: string
+  stock_name: string | null
+  signal_date: string
+  mention_count: number
+  entry_price: number
+  returns: Record<string, number | null>
+}
+
+export interface MentionBacktestResponse {
+  params: Record<string, unknown>
+  total_signals: number
+  holding_stats: Record<string, HoldingPeriodStats>
+  items: MentionBacktestItem[]
+  summary: Record<string, unknown>
+}
+
+// YouTube 과열 경고
+
+export interface OverheatStock {
+  stock_code: string
+  stock_name: string | null
+  status: string
+  recent_mentions: number
+  baseline_avg_daily: number
+  overheat_ratio: number
+  price_change_pct: number | null
+  mention_count_total: number
+  recent_videos_count: number
+}
+
+export interface OverheatResponse {
+  items: OverheatStock[]
+  summary: {
+    total: number
+    overheat_count: number
+    frenzy_count: number
+    contrarian_count: number
+    cooling_count: number
+  }
 }

@@ -96,6 +96,16 @@ export interface PositionAddBuy {
   buy_date?: string
 }
 
+export interface PositionUpdateData {
+  entry_price?: number
+  quantity?: number
+  entry_date?: string
+  exit_price?: number
+  exit_date?: string
+  exit_reason?: string
+  notes?: string
+}
+
 export interface PositionPartialExit {
   exit_price: number
   quantity: number

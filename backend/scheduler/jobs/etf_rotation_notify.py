@@ -1,10 +1,11 @@
 """ETF 순환매 시그널 텔레그램 알림 작업."""
 import logging
-from datetime import datetime
 
 from core.database import async_session_maker
+from core.timezone import now_kst
 from services.etf_rotation_service import EtfRotationService
 from integrations.telegram.client import get_telegram_client
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ def format_signal_message(signals: list[dict]) -> str:
     return "\n".join(lines)
 
 
+@track_job_execution("etf_rotation_notify")
 async def notify_rotation_signals():
     """순환매 시그널 텔레그램 알림.
 
@@ -81,7 +83,7 @@ async def notify_rotation_signals():
                 return
 
             # 메시지 구성
-            now = datetime.now()
+            now = now_kst()
             date_str = now.strftime("%Y-%m-%d")
 
             message_body = format_signal_message(signals)

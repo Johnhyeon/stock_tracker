@@ -1,17 +1,19 @@
 """가격 업데이트 작업."""
 import logging
-from datetime import datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
-from core.database import SessionLocal
+from core.database import async_session_maker
+from core.timezone import now_kst
 from models import InvestmentIdea, Position, IdeaStatus
 from services.price_service import get_price_service
 from core.events import event_bus, Event, EventType
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("price_update")
 async def update_active_position_prices() -> dict:
     """활성 포지션의 가격을 업데이트합니다.
 
@@ -21,21 +23,22 @@ async def update_active_position_prices() -> dict:
     Returns:
         {"updated_count": N, "errors": [...]}
     """
-    db: Session = SessionLocal()
     price_service = get_price_service()
-    results = {"updated_count": 0, "errors": [], "timestamp": datetime.now().isoformat()}
+    results = {"updated_count": 0, "errors": [], "timestamp": now_kst().isoformat()}
 
     try:
-        # ACTIVE 아이디어의 열린 포지션 조회
-        active_positions = (
-            db.query(Position)
-            .join(InvestmentIdea)
-            .filter(
-                InvestmentIdea.status == IdeaStatus.ACTIVE,
-                Position.exit_date.is_(None),
+        # 비동기 DB 세션으로 ACTIVE 아이디어의 열린 포지션 조회
+        async with async_session_maker() as db:
+            stmt = (
+                select(Position)
+                .join(InvestmentIdea)
+                .where(
+                    InvestmentIdea.status == IdeaStatus.ACTIVE,
+                    Position.exit_date.is_(None),
+                )
             )
-            .all()
-        )
+            result = await db.execute(stmt)
+            active_positions = result.scalars().all()
 
         if not active_positions:
             logger.debug("No active positions to update")
@@ -77,8 +80,6 @@ async def update_active_position_prices() -> dict:
     except Exception as e:
         logger.error(f"Price update job failed: {e}")
         results["errors"].append(str(e))
-    finally:
-        db.close()
 
     return results
 

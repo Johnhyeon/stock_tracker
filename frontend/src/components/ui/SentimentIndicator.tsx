@@ -26,7 +26,7 @@ export default function SentimentIndicator({
   // 레벨별 색상
   const getColor = (dotIndex: number, currentLevel: number) => {
     if (dotIndex > currentLevel) {
-      return 'bg-gray-200 dark:bg-gray-600'
+      return 'bg-gray-200 dark:bg-t-border-hover'
     }
 
     // 레벨에 따른 색상 그라데이션

@@ -5,19 +5,21 @@
 18:30 정규 수집이 최종 데이터로 대체합니다.
 """
 import logging
-from datetime import date, datetime
 
 from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 
 from core.database import async_session_maker
+from core.timezone import now_kst, today_kst
 from models import StockInvestorFlow
 from integrations.kis.client import get_kis_client
 from services.theme_map_service import get_theme_map_service
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("intraday_flow_collect")
 async def collect_intraday_investor_flow() -> dict:
     """장중 수급 데이터 수집.
 
@@ -27,7 +29,7 @@ async def collect_intraday_investor_flow() -> dict:
     result = {
         "collected_count": 0,
         "failed_count": 0,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
     }
 
     kis_client = get_kis_client()
@@ -36,7 +38,7 @@ async def collect_intraday_investor_flow() -> dict:
     async with async_session_maker() as db:
         try:
             # 최근 3일간 외국인+기관 순매수량 합계 기준 상위/하위
-            recent_date = date.today()
+            recent_date = today_kst()
 
             stmt = (
                 select(
@@ -77,7 +79,7 @@ async def collect_intraday_investor_flow() -> dict:
             )
 
             # DB에 upsert
-            today = date.today()
+            today = today_kst()
             saved = 0
 
             for code, daily_list in flow_data.items():

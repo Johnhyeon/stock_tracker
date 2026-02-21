@@ -8,14 +8,14 @@ import type {
   TrendingTicker,
   SchedulerStatus,
   RisingTicker,
-  TraderHotStock,
-  TraderRisingStock,
-  TraderPerformanceStats,
-  TraderNewMention,
-  TraderCrossCheck,
-  TraderSyncResponse,
+  ExpertHotStock,
+  ExpertRisingStock,
+  ExpertPerformanceStats,
+  ExpertNewMention,
+  ExpertCrossCheck,
+  ExpertSyncResponse,
 } from '../types/data'
-import { dataApi, disclosureApi, youtubeApi, schedulerApi, traderApi } from '../services/api'
+import { dataApi, disclosureApi, youtubeApi, schedulerApi, expertApi } from '../services/api'
 
 // 수집 결과 타입
 interface CollectResult {
@@ -50,17 +50,17 @@ interface DataState {
   youtubeCollectResult: CollectResult | null
   youtubeHotCollectResult: CollectResult | null
 
-  // Trader Watchlist data
-  traderHotStocks: TraderHotStock[]
-  traderRisingStocks: TraderRisingStock[]
-  traderPerformance: TraderPerformanceStats | null
-  traderNewMentions: TraderNewMention[]
-  traderCrossCheck: TraderCrossCheck[]
-  traderHotLoading: boolean
-  traderRisingLoading: boolean
-  traderPerformanceLoading: boolean
-  traderSyncing: boolean
-  traderSyncResult: TraderSyncResponse | null
+  // Expert Watchlist data
+  expertHotStocks: ExpertHotStock[]
+  expertRisingStocks: ExpertRisingStock[]
+  expertPerformance: ExpertPerformanceStats | null
+  expertNewMentions: ExpertNewMention[]
+  expertCrossCheck: ExpertCrossCheck[]
+  expertHotLoading: boolean
+  expertRisingLoading: boolean
+  expertPerformanceLoading: boolean
+  expertSyncing: boolean
+  expertSyncResult: ExpertSyncResponse | null
 
   // Scheduler
   schedulerStatus: SchedulerStatus | null
@@ -85,13 +85,13 @@ interface DataState {
   collectYouTube: (hoursBack?: number) => Promise<void>
   collectYouTubeHot: (hoursBack?: number, mode?: 'quick' | 'normal' | 'full') => Promise<void>
   fetchSchedulerStatus: () => Promise<void>
-  // Trader actions
-  syncTraderMentions: () => Promise<void>
-  fetchTraderHotStocks: (daysBack?: number) => Promise<void>
-  fetchTraderRisingStocks: (daysBack?: number) => Promise<void>
-  fetchTraderPerformance: (daysBack?: number) => Promise<void>
-  fetchTraderNewMentions: (sinceHours?: number) => Promise<void>
-  fetchTraderCrossCheck: () => Promise<void>
+  // Expert actions
+  syncExpertMentions: () => Promise<void>
+  fetchExpertHotStocks: (daysBack?: number) => Promise<void>
+  fetchExpertRisingStocks: (daysBack?: number) => Promise<void>
+  fetchExpertPerformance: (daysBack?: number) => Promise<void>
+  fetchExpertNewMentions: (sinceHours?: number) => Promise<void>
+  fetchExpertCrossCheck: () => Promise<void>
   clearError: () => void
   clearCollectResults: () => void
 }
@@ -113,21 +113,21 @@ export const useDataStore = create<DataState>((set, get) => ({
   youtubeHotCollecting: false,
   youtubeCollectResult: null,
   youtubeHotCollectResult: null,
-  // Trader Watchlist
-  traderHotStocks: [],
-  traderRisingStocks: [],
-  traderPerformance: null,
-  traderNewMentions: [],
-  traderCrossCheck: [],
-  traderHotLoading: false,
-  traderRisingLoading: false,
-  traderPerformanceLoading: false,
+  // Expert Watchlist
+  expertHotStocks: [],
+  expertRisingStocks: [],
+  expertPerformance: null,
+  expertNewMentions: [],
+  expertCrossCheck: [],
+  expertHotLoading: false,
+  expertRisingLoading: false,
+  expertPerformanceLoading: false,
   // Theme Setup
   themeCalculating: false,
   themeAnalyzing: false,
   themeCollectingFlow: false,
-  traderSyncing: false,
-  traderSyncResult: null,
+  expertSyncing: false,
+  expertSyncResult: null,
   schedulerStatus: null,
   schedulerLoading: false,
   error: null,
@@ -256,70 +256,70 @@ export const useDataStore = create<DataState>((set, get) => ({
   clearCollectResults: () => set({
     youtubeCollectResult: null,
     youtubeHotCollectResult: null,
-    traderSyncResult: null,
+    expertSyncResult: null,
   }),
 
-  // Trader Actions
-  syncTraderMentions: async () => {
-    set({ traderSyncing: true, traderSyncResult: null })
+  // Expert Actions
+  syncExpertMentions: async () => {
+    set({ expertSyncing: true, expertSyncResult: null })
     try {
-      const result = await traderApi.sync()
-      set({ traderSyncing: false, traderSyncResult: result })
+      const result = await expertApi.sync()
+      set({ expertSyncing: false, expertSyncResult: result })
       // 동기화 후 데이터 새로고침
-      get().fetchTraderHotStocks()
-      get().fetchTraderRisingStocks()
-      get().fetchTraderPerformance()
+      get().fetchExpertHotStocks()
+      get().fetchExpertRisingStocks()
+      get().fetchExpertPerformance()
     } catch (err) {
-      set({ traderSyncing: false, error: '트레이더 데이터 동기화에 실패했습니다.' })
+      set({ expertSyncing: false, error: '전문가 데이터 동기화에 실패했습니다.' })
     }
   },
 
-  fetchTraderHotStocks: async (daysBack = 7) => {
-    set({ traderHotLoading: true })
+  fetchExpertHotStocks: async (daysBack = 7) => {
+    set({ expertHotLoading: true })
     try {
-      const stocks = await traderApi.getHotStocks(daysBack, 20, true)
-      set({ traderHotStocks: stocks, traderHotLoading: false })
+      const stocks = await expertApi.getHotStocks(daysBack, 20, true)
+      set({ expertHotStocks: stocks, expertHotLoading: false })
     } catch (err) {
-      console.error('Failed to fetch trader hot stocks:', err)
-      set({ traderHotLoading: false })
+      console.error('Failed to fetch expert hot stocks:', err)
+      set({ expertHotLoading: false })
     }
   },
 
-  fetchTraderRisingStocks: async (daysBack = 7) => {
-    set({ traderRisingLoading: true })
+  fetchExpertRisingStocks: async (daysBack = 7) => {
+    set({ expertRisingLoading: true })
     try {
-      const stocks = await traderApi.getRisingStocks(daysBack, 20, true)
-      set({ traderRisingStocks: stocks, traderRisingLoading: false })
+      const stocks = await expertApi.getRisingStocks(daysBack, 20, true)
+      set({ expertRisingStocks: stocks, expertRisingLoading: false })
     } catch (err) {
-      console.error('Failed to fetch trader rising stocks:', err)
-      set({ traderRisingLoading: false })
+      console.error('Failed to fetch expert rising stocks:', err)
+      set({ expertRisingLoading: false })
     }
   },
 
-  fetchTraderPerformance: async (daysBack = 30) => {
-    set({ traderPerformanceLoading: true })
+  fetchExpertPerformance: async (daysBack = 30) => {
+    set({ expertPerformanceLoading: true })
     try {
-      const stats = await traderApi.getPerformanceStats(daysBack)
-      set({ traderPerformance: stats, traderPerformanceLoading: false })
+      const stats = await expertApi.getPerformanceStats(daysBack)
+      set({ expertPerformance: stats, expertPerformanceLoading: false })
     } catch (err) {
-      console.error('Failed to fetch trader performance:', err)
-      set({ traderPerformanceLoading: false })
+      console.error('Failed to fetch expert performance:', err)
+      set({ expertPerformanceLoading: false })
     }
   },
 
-  fetchTraderNewMentions: async (sinceHours = 24) => {
+  fetchExpertNewMentions: async (sinceHours = 24) => {
     try {
-      const mentions = await traderApi.getNewMentions(sinceHours)
-      set({ traderNewMentions: mentions })
+      const mentions = await expertApi.getNewMentions(sinceHours)
+      set({ expertNewMentions: mentions })
     } catch (err) {
       console.error('Failed to fetch new mentions:', err)
     }
   },
 
-  fetchTraderCrossCheck: async () => {
+  fetchExpertCrossCheck: async () => {
     try {
-      const crossCheck = await traderApi.getCrossCheck()
-      set({ traderCrossCheck: crossCheck })
+      const crossCheck = await expertApi.getCrossCheck()
+      set({ expertCrossCheck: crossCheck })
     } catch (err) {
       console.error('Failed to fetch cross check:', err)
     }

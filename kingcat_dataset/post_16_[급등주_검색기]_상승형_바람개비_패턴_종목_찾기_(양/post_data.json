@@ -1,0 +1,328 @@
+{
+  "post_no": 16,
+  "title": "[급등주 검색기] 상승형 바람개비 패턴 종목 찾기 (양음양 매매)",
+  "date": "2024.08.15",
+  "comments": 95,
+  "url": "https://blog.naver.com/PostView.naver?blogId=bricoleur__&logNo=223548986519",
+  "logNo": "223548986519",
+  "full_text": "​\n오늘은 주식매매 기법 중 하나인 상승형 바람개비 패턴에 대해 설명해보려고 합니다.\n여러 주식 공부방에서 한 번씩 언급되던 매매패턴이었는데 어떤건지 저도 궁금하더라고요. (근데 이거 양음양 패턴 아닌가요?😂)\n상승형 바람개비 패턴은 양봉 +도지캔들+ 양봉의 모습인데요.\n그냥 누구나 다 아는 패턴만 가지고 매매하면 실패할 확률이 높겠죠?\n\"양봉+도지+양봉\" 이 세 개의 캔들에서도 디테일들이 많이 숨어 있을 겁니다.\n제 매매 노하우로 조금 풀어서 검색기를 만들어보죠.\n​\n시간이 남아 심심해서 검색기 한번 끄적끄적 해봤습니다.\n심심할 때마다&아이디어가 떠오를 때마다 검색기, 수식 만드는 게 취미입니다.ㅋ\n​\n\n우선 상승형 바람개비 패턴의 종목을 찾으려면 도지 캔들 혹은 상승하기 전에 종목을 미리 발견해야 되겠죠?!\n1봉전 도지 캔들은 2봉전 양봉의 종가 위에서 나오는 모습이네요. 그리고 0봉전 시가 아래에서 종가 마감되는 모습입니다.\n0봉전, 1봉전, 2봉전이 이해가 안되신다면 아래 그림 한번 보고 오시죠.\n\n0봉전은 오늘을 말합니다. 그리고 1봉전은 어제. 그제가 2봉전 캔들이 되는 겁니다. 이해되시나요?\n그럼 다시 패턴을 읽어보죠. 오늘의 시가 아래에서&그제 종가 위에서 도지 캔들이 만들어져야 하는 모습입니다.\n여기에서 제일 중요한 게 하나 빠졌죠. 뭘까요?\n바로 거래량입니다.\n차트 매매는 캔들로만 매매하는 게 아니라 무조건 거래량&거래대금이 같이 따라와야 합니다.\n\n매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎\n\n먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)\n\n이렇게 검색해 보니 25개의 종목이 생겼습니다.\n이제 도지 캔들을 정의해 줘야겠죠. 여기에서 중요한 게 2봉전 종가 위에서 도지 캔들이 시작해야 한다는 기준이 있었죠?\n하지만 모든 차트가 정답처럼 완벽하게 떨어지지 않기 때문에, 이 기준은 기준봉 범위 안에서\n변곡점 캔들이 만들어지는 모습으로 설정을 바꿔봅시다. 아래 그림처럼요.\n\n변곡점 캔들이 음봉 캔들 기준 -5% 이상을 넘지 말 것, 양봉 캔들 기준 +8% 이상을 넘지 말라는 기준도 같이 넣어 줍시다.\n(도지캔들 기준, 음봉이 큰게 싫다면 -의 범위를 늘리고, 양봉캔들이 큰게 싫다면 +의 범위를 줄이시면 되겠죠. 0에 가까울수록 도지캔들이 됩니다. H항목에서 수정 가능.)\n​\n그리고 제일 중요한 거래량이 팍! 죽어야 한다는 것도요.\n\n그럼 총 8개의 종목이 뜹니다.\n이걸로 성과 검증을 돌려보죠.\n\n8월 8일에 휴마시스,현대바이오랜드 종목이 떴네요.\n근데 위치가 이상하죠? 8월 7일인 도지 캔들에 안 뜨고 그다음 날인 양봉에 검색됐는데요.\n그 이유는 바람개비 패턴을 만들고 당일 상승 나올 종목을 고르기 위해 2봉전 캔들을 기준으로 만들었기 때문입니다.\n8월 7일에 뜨게 하려면 2봉전을 1봉전으로 수정하시면 되겠죠. 이렇게요.\n\n이렇게 수정하시면 25개의 종목이 검색되게 됩니다.\n\n그리고 8월 7일엔  휴마시스와 현대바이오랜드가 검색되는 거고요. 너무 쉽죠?😆\n​\n전날 미리 관심종목으로 뽑아놓고 싶다 → 1봉전으로 검색.\n당일 상승 나올 종목만 보고 싶다 → 2봉전으로 검색.\n​\n이렇게 응용해서 사용하시면 될 것 같습니다.\n\n*저는 당일 상승 나오는 게 더 좋아요ㅋㅋ\n\n당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!\n\n텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다.\n\n14일 기준 성우하이텍도 있고요.\n​\n차트보는 좋은 눈을 가지고 계시다면 쓸만한 급등주 검색기 일 겁니다.\n검색기 만들 수 있는 분들은 지금 항목에서 더 디테일하게 기준을 추가하셔도 되고요.\n적절하게 잘 섞어서 쓰시길 바랍니다.\n​\n*양음양 매매는 매매일지에서도 여러번 매매팁 드렸습니다. 그걸 보시고 디테일을 더 추가하시면 되겠죠.\n​\n\n​\n💡아무리 좋은 검색기라도 그 안에서 상승할 종목 하나 못 고른다면 쓰나 마나 한 검색기입니다.\n검색기에 종목이 뜬다고 모든 종목이 상승하진 않으니까요.\n100개의 종목이 뜨는 검색기에서도 상승 나올 종목 하나 찾을 수 있어야 합니다.\n눈으로 먼저 종목을 찾을 수 있는 실력을 키우시길 바랍니다. 기법보다 제일 중요한 건 기본기입니다.\n이렇게 말해도 그냥 막 쓰시는 분들 계시겠죠? 그에 따른 대가는 스스로 치르시길 바랍니다.\n​\n​\n엑셀파일 안열리시는 분들은 아래 참고.\n↓↓↓\n\n*몸통길이 조건식 → 패턴정의로 검색.\n\n​\n​\n#급등주검색기#급등주매매#양음양매매#바람개비패턴#상승바람개비패턴\n​",
+  "content_sequence": [
+    {
+      "type": "text",
+      "content": "​\n오늘은 주식매매 기법 중 하나인 상승형 바람개비 패턴에 대해 설명해보려고 합니다.\n여러 주식 공부방에서 한 번씩 언급되던 매매패턴이었는데 어떤건지 저도 궁금하더라고요. (근데 이거 양음양 패턴 아닌가요?😂)\n상승형 바람개비 패턴은 양봉 +도지캔들+ 양봉의 모습인데요.\n그냥 누구나 다 아는 패턴만 가지고 매매하면 실패할 확률이 높겠죠?\n\"양봉+도지+양봉\" 이 세 개의 캔들에서도 디테일들이 많이 숨어 있을 겁니다.\n제 매매 노하우로 조금 풀어서 검색기를 만들어보죠.\n​\n시간이 남아 심심해서 검색기 한번 끄적끄적 해봤습니다.\n심심할 때마다&아이디어가 떠오를 때마다 검색기, 수식 만드는 게 취미입니다.ㅋ\n​"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfNTAg/MDAxNzIzNjUwNjQ2MDA5.4dvVZXXduRaoC6pQn2gZp2_l9mJqYWw8vYlovYyj4YEg.1dUoSq5fB11lrRiiV7TnhL6dZBERjQtOF36bM46X_tIg.PNG/SE-7f1ee9ed-7583-4db2-a57f-e0520181a3d7.png?type=w966",
+      "index": 1,
+      "filename": "img_001.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_001.png"
+    },
+    {
+      "type": "text",
+      "content": "우선 상승형 바람개비 패턴의 종목을 찾으려면 도지 캔들 혹은 상승하기 전에 종목을 미리 발견해야 되겠죠?!\n1봉전 도지 캔들은 2봉전 양봉의 종가 위에서 나오는 모습이네요. 그리고 0봉전 시가 아래에서 종가 마감되는 모습입니다.\n0봉전, 1봉전, 2봉전이 이해가 안되신다면 아래 그림 한번 보고 오시죠."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTE1/MDAxNzIzNjUwNjUxMjg5.kqbOnj8nYdc-uJgiQQGM3VfkGdsllFh5AyvPVcyTYz0g.fu7_R57V27yBDB8jpDclXh5n4Q4DXrjfEZHBcWJM_d8g.PNG/SE-288a01bb-d442-45b6-988c-ce46775197bc.png?type=w966",
+      "index": 2,
+      "filename": "img_002.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_002.png"
+    },
+    {
+      "type": "text",
+      "content": "0봉전은 오늘을 말합니다. 그리고 1봉전은 어제. 그제가 2봉전 캔들이 되는 겁니다. 이해되시나요?\n그럼 다시 패턴을 읽어보죠. 오늘의 시가 아래에서&그제 종가 위에서 도지 캔들이 만들어져야 하는 모습입니다.\n여기에서 제일 중요한 게 하나 빠졌죠. 뭘까요?\n바로 거래량입니다.\n차트 매매는 캔들로만 매매하는 게 아니라 무조건 거래량&거래대금이 같이 따라와야 합니다."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfNTMg/MDAxNzIzNjUwODAzMzcw.Ih6gxg3la9WDmCR0cZoZoOf-Bps4Z9UkWArJecDN190g.S5KOUDwhHIT_UzVw6d9sULa0wBFymq5SZq4mIKVIQGIg.PNG/SE-ebc69cba-e02f-4940-b210-b3f5d2bf888a.png?type=w966",
+      "index": 3,
+      "filename": "img_003.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_003.png"
+    },
+    {
+      "type": "text",
+      "content": "매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfODIg/MDAxNzIzNjUxMDA5NTUx.Tzqk4_frgqkMHpgrLfyWiPXEMbbOhxylp07M8l22r60g.kNyaBxrtYqq0dK-5OGo2q3KN2dIwuzYKaAvLFRrtxXsg.PNG/image.png?type=w966",
+      "index": 4,
+      "filename": "img_004.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_004.png"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTcy/MDAxNzIzNjUyMjM0MDAy.JauqlS5d34eJPVq6AR4ca4bOoplSlbNWLC6qAjBcADsg.2S6Ra5WjRP8c6SYSBkfrk-6LVnclNwwcuWqfvc2oseQg.PNG/image.png?type=w966",
+      "index": 5,
+      "filename": "img_005.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_005.png"
+    },
+    {
+      "type": "text",
+      "content": "먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjIg/MDAxNzIzNjYxMzk4MTU0.z3cW4eX8CqFJVN9vaTt5svU7GKckROaLP_JTZkDysh8g.H9rMg95gPEwkYtPV-CK_ShsZaq8He0kM3QKMgt7zWVEg.PNG/SE-fef1251a-048e-4d24-b7c1-5a66e3d4495e.png?type=w966",
+      "index": 6,
+      "filename": "img_006.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_006.png"
+    },
+    {
+      "type": "text",
+      "content": "이렇게 검색해 보니 25개의 종목이 생겼습니다.\n이제 도지 캔들을 정의해 줘야겠죠. 여기에서 중요한 게 2봉전 종가 위에서 도지 캔들이 시작해야 한다는 기준이 있었죠?\n하지만 모든 차트가 정답처럼 완벽하게 떨어지지 않기 때문에, 이 기준은 기준봉 범위 안에서\n변곡점 캔들이 만들어지는 모습으로 설정을 바꿔봅시다. 아래 그림처럼요."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTg4/MDAxNzIzNjUzMDc2MDQy.MJD2XJNgaXDVH_M2h-vy6cvWhm62n_D2jqmU1DIWAK4g.-gOScG6MZ9k8TKGO449R-sbXjnb7jenNyFACMTDVXhkg.PNG/SE-bf9b823c-3cd8-41d9-910d-32e24eb3d3bf.png?type=w966",
+      "index": 7,
+      "filename": "img_007.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_007.png"
+    },
+    {
+      "type": "text",
+      "content": "변곡점 캔들이 음봉 캔들 기준 -5% 이상을 넘지 말 것, 양봉 캔들 기준 +8% 이상을 넘지 말라는 기준도 같이 넣어 줍시다.\n(도지캔들 기준, 음봉이 큰게 싫다면 -의 범위를 늘리고, 양봉캔들이 큰게 싫다면 +의 범위를 줄이시면 되겠죠. 0에 가까울수록 도지캔들이 됩니다. H항목에서 수정 가능.)\n​\n그리고 제일 중요한 거래량이 팍! 죽어야 한다는 것도요."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTIx/MDAxNzIzNjYxMzkxNzky.v_-_j6FJ-vQRSgXMEg63oGEaUcA527XotJEMqq83V2gg.tlX-pcnJrVq08x8O1dXVk8hK43lSI300r-9HECW28lEg.PNG/SE-6e5a1163-cc09-43eb-83c2-86450dccc3e0.png?type=w966",
+      "index": 8,
+      "filename": "img_008.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_008.png"
+    },
+    {
+      "type": "text",
+      "content": "그럼 총 8개의 종목이 뜹니다.\n이걸로 성과 검증을 돌려보죠."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTQz/MDAxNzIzNjYyNjA2Mzkz.eoXarp1RJvlIdSmveFYophG3reLO0BMJUOViWOVIjlsg.ZdTCwxhbWs_6EZ1EgJz66akLq7gbog8nU2tytwStbNYg.PNG/SE-dfd9e61d-2a56-449b-b1a7-b26890a79871.png?type=w966",
+      "index": 9,
+      "filename": "img_009.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_009.png"
+    },
+    {
+      "type": "text",
+      "content": "8월 8일에 휴마시스,현대바이오랜드 종목이 떴네요.\n근데 위치가 이상하죠? 8월 7일인 도지 캔들에 안 뜨고 그다음 날인 양봉에 검색됐는데요.\n그 이유는 바람개비 패턴을 만들고 당일 상승 나올 종목을 고르기 위해 2봉전 캔들을 기준으로 만들었기 때문입니다.\n8월 7일에 뜨게 하려면 2봉전을 1봉전으로 수정하시면 되겠죠. 이렇게요."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTEw/MDAxNzIzNjYxMzg0MjEy.nWtXWw6DIMKQoyK7FDYX5PrvAOejmcYUbQwstntoehwg.Fr_avXX0pJY68Qm-3gGPQLrYq7j5eHJHcKlzWlls8egg.PNG/SE-219d0f7d-5830-4516-ad42-ccd50cf63797.png?type=w966",
+      "index": 10,
+      "filename": "img_010.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_010.png"
+    },
+    {
+      "type": "text",
+      "content": "이렇게 수정하시면 25개의 종목이 검색되게 됩니다."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfNzkg/MDAxNzIzNjYyNjE3NTEy.38Bkf1Jp9zwjP04C0MOfbompowBMp7ZEvrVfn2Iuemgg.6SuGP4oPtt0USji5w_gjuUk245G3mgFGsyPx754hh7Ag.PNG/SE-cccb410a-4d39-4d1f-811c-05a19380e47b.png?type=w966",
+      "index": 11,
+      "filename": "img_011.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_011.png"
+    },
+    {
+      "type": "text",
+      "content": "그리고 8월 7일엔  휴마시스와 현대바이오랜드가 검색되는 거고요. 너무 쉽죠?😆\n​\n전날 미리 관심종목으로 뽑아놓고 싶다 → 1봉전으로 검색.\n당일 상승 나올 종목만 보고 싶다 → 2봉전으로 검색.\n​\n이렇게 응용해서 사용하시면 될 것 같습니다."
+    },
+    {
+      "type": "text",
+      "content": "*저는 당일 상승 나오는 게 더 좋아요ㅋㅋ"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjY4/MDAxNzIzNjYxMzc1MDEz.5MkZ9wNuxxLHxphJQYymudaD7Q4NnFZ2IdwWQE_BgoQg._nWg7a4KqQQU3PEQBScIHpHm-jcJjjCuXHDfdcyvXeAg.PNG/SE-5c24aec7-0bd1-4c67-9d56-407686c6e882.png?type=w966",
+      "index": 12,
+      "filename": "img_012.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_012.png"
+    },
+    {
+      "type": "text",
+      "content": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTIg/MDAxNzIzNjYyNjI0Njg2.-i0_PAqXOTdvAoK6THG4B7QlPKPZkqwGP2SCNfdz5OUg.bQ0zdqnTBm7d0arGHHgEDp3Sn4_pIn55BUOXFhWgzN8g.PNG/SE-cf3341e8-8bc3-4954-b840-0cc52996f187.png?type=w966",
+      "index": 13,
+      "filename": "img_013.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_013.png"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjY2/MDAxNzIzNjYyNjQwMDA2.CbuOzE2v4UlZ_X__EJNZDk5fvStPTGmyLEUbDD_whIMg.j9MuQFl03-L8-JNxRksT8GXLLdTIQWFVUR1PPSjWK2Qg.PNG/SE-42c39a38-8bb3-4e1a-9add-198fd59f5746.png?type=w966",
+      "index": 14,
+      "filename": "img_014.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_014.png"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjQ3/MDAxNzIzNjYyNjM1MzU5.UHWnAAys4VfNGBS6o5c73jlDy4rPJfuS4NvrsosMXDcg.JZK2TFkJ-8da58lri2Tx0PnPKYQ7Nw9onRsO6GOuIXwg.PNG/SE-b65b2cd3-6def-4ff4-a5d6-77b27a4c98b3.png?type=w966",
+      "index": 15,
+      "filename": "img_015.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_015.png"
+    },
+    {
+      "type": "text",
+      "content": "텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다."
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfOTIg/MDAxNzIzNjYyNjMwMjQw.cTMTPZhbkkO-Tg4waenavAsycD_nBPE7WXUrmwcpFa8g.3DcUbIEWDQIIhCqkCIcaCXW8-3C3D5eQAfj5jPR1HL0g.PNG/SE-289414d3-1500-42bb-bf82-2d30575fb257.png?type=w966",
+      "index": 16,
+      "filename": "img_016.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_016.png"
+    },
+    {
+      "type": "text",
+      "content": "14일 기준 성우하이텍도 있고요.\n​\n차트보는 좋은 눈을 가지고 계시다면 쓸만한 급등주 검색기 일 겁니다.\n검색기 만들 수 있는 분들은 지금 항목에서 더 디테일하게 기준을 추가하셔도 되고요.\n적절하게 잘 섞어서 쓰시길 바랍니다.\n​\n*양음양 매매는 매매일지에서도 여러번 매매팁 드렸습니다. 그걸 보시고 디테일을 더 추가하시면 되겠죠.\n​"
+    },
+    {
+      "type": "text",
+      "content": "​\n💡아무리 좋은 검색기라도 그 안에서 상승할 종목 하나 못 고른다면 쓰나 마나 한 검색기입니다.\n검색기에 종목이 뜬다고 모든 종목이 상승하진 않으니까요.\n100개의 종목이 뜨는 검색기에서도 상승 나올 종목 하나 찾을 수 있어야 합니다.\n눈으로 먼저 종목을 찾을 수 있는 실력을 키우시길 바랍니다. 기법보다 제일 중요한 건 기본기입니다.\n이렇게 말해도 그냥 막 쓰시는 분들 계시겠죠? 그에 따른 대가는 스스로 치르시길 바랍니다.\n​\n​\n엑셀파일 안열리시는 분들은 아래 참고.\n↓↓↓"
+    },
+    {
+      "type": "image",
+      "url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTc0/MDAxNzIzNjYxMzU4Njgz.-zTlvp_eyeuuu5yaYbyp8AQ7sXYHY83_cPJOn_o3ueQg.KGnDU6bw2XHjHhEPvZREzfzqO3ra7O5MdovtkRKbNDcg.PNG/SE-2b0ba86f-95ce-42b4-a65b-513cb350c633.png?type=w966",
+      "index": 17,
+      "filename": "img_017.png",
+      "local_path": "post_16_[급등주_검색기]_상승형_바람개비_패턴_종목_찾기_(양\\images\\img_017.png"
+    },
+    {
+      "type": "text",
+      "content": "*몸통길이 조건식 → 패턴정의로 검색."
+    },
+    {
+      "type": "text",
+      "content": "​\n​\n#급등주검색기#급등주매매#양음양매매#바람개비패턴#상승바람개비패턴\n​"
+    }
+  ],
+  "image_text_pairs": [
+    {
+      "image_file": "img_001.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfNTAg/MDAxNzIzNjUwNjQ2MDA5.4dvVZXXduRaoC6pQn2gZp2_l9mJqYWw8vYlovYyj4YEg.1dUoSq5fB11lrRiiV7TnhL6dZBERjQtOF36bM46X_tIg.PNG/SE-7f1ee9ed-7583-4db2-a57f-e0520181a3d7.png?type=w966",
+      "context_before": "​\n오늘은 주식매매 기법 중 하나인 상승형 바람개비 패턴에 대해 설명해보려고 합니다.\n여러 주식 공부방에서 한 번씩 언급되던 매매패턴이었는데 어떤건지 저도 궁금하더라고요. (근데 이거 양음양 패턴 아닌가요?😂)\n상승형 바람개비 패턴은 양봉 +도지캔들+ 양봉의 모습인데요.\n그냥 누구나 다 아는 패턴만 가지고 매매하면 실패할 확률이 높겠죠?\n\"양봉+도지+양봉\" 이 세 개의 캔들에서도 디테일들이 많이 숨어 있을 겁니다.\n제 매매 노하우로 조금 풀어서 검색기를 만들어보죠.\n​\n시간이 남아 심심해서 검색기 한번 끄적끄적 해봤습니다.\n심심할 때마다&아이디어가 떠오를 때마다 검색기, 수식 만드는 게 취미입니다.ㅋ\n​",
+      "context_after": "우선 상승형 바람개비 패턴의 종목을 찾으려면 도지 캔들 혹은 상승하기 전에 종목을 미리 발견해야 되겠죠?!\n1봉전 도지 캔들은 2봉전 양봉의 종가 위에서 나오는 모습이네요. 그리고 0봉전 시가 아래에서 종가 마감되는 모습입니다.\n0봉전, 1봉전, 2봉전이 이해가 안되신다면 아래 그림 한번 보고 오시죠.",
+      "combined_context": "​\n오늘은 주식매매 기법 중 하나인 상승형 바람개비 패턴에 대해 설명해보려고 합니다.\n여러 주식 공부방에서 한 번씩 언급되던 매매패턴이었는데 어떤건지 저도 궁금하더라고요. (근데 이거 양음양 패턴 아닌가요?😂)\n상승형 바람개비 패턴은 양봉 +도지캔들+ 양봉의 모습인데요.\n그냥 누구나 다 아는 패턴만 가지고 매매하면 실패할 확률이 높겠죠?\n\"양봉+도지+양봉\" 이 세 개의 캔들에서도 디테일들이 많이 숨어 있을 겁니다.\n제 매매 노하우로 조금 풀어서 검색기를 만들어보죠.\n​\n시간이 남아 심심해서 검색기 한번 끄적끄적 해봤습니다.\n심심할 때마다&아이디어가 떠오를 때마다 검색기, 수식 만드는 게 취미입니다.ㅋ\n​\n[이미지]\n우선 상승형 바람개비 패턴의 종목을 찾으려면 도지 캔들 혹은 상승하기 전에 종목을 미리 발견해야 되겠죠?!\n1봉전 도지 캔들은 2봉전 양봉의 종가 위에서 나오는 모습이네요. 그리고 0봉전 시가 아래에서 종가 마감되는 모습입니다.\n0봉전, 1봉전, 2봉전이 이해가 안되신다면 아래 그림 한번 보고 오시죠."
+    },
+    {
+      "image_file": "img_002.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTE1/MDAxNzIzNjUwNjUxMjg5.kqbOnj8nYdc-uJgiQQGM3VfkGdsllFh5AyvPVcyTYz0g.fu7_R57V27yBDB8jpDclXh5n4Q4DXrjfEZHBcWJM_d8g.PNG/SE-288a01bb-d442-45b6-988c-ce46775197bc.png?type=w966",
+      "context_before": "우선 상승형 바람개비 패턴의 종목을 찾으려면 도지 캔들 혹은 상승하기 전에 종목을 미리 발견해야 되겠죠?!\n1봉전 도지 캔들은 2봉전 양봉의 종가 위에서 나오는 모습이네요. 그리고 0봉전 시가 아래에서 종가 마감되는 모습입니다.\n0봉전, 1봉전, 2봉전이 이해가 안되신다면 아래 그림 한번 보고 오시죠.",
+      "context_after": "0봉전은 오늘을 말합니다. 그리고 1봉전은 어제. 그제가 2봉전 캔들이 되는 겁니다. 이해되시나요?\n그럼 다시 패턴을 읽어보죠. 오늘의 시가 아래에서&그제 종가 위에서 도지 캔들이 만들어져야 하는 모습입니다.\n여기에서 제일 중요한 게 하나 빠졌죠. 뭘까요?\n바로 거래량입니다.\n차트 매매는 캔들로만 매매하는 게 아니라 무조건 거래량&거래대금이 같이 따라와야 합니다.",
+      "combined_context": "우선 상승형 바람개비 패턴의 종목을 찾으려면 도지 캔들 혹은 상승하기 전에 종목을 미리 발견해야 되겠죠?!\n1봉전 도지 캔들은 2봉전 양봉의 종가 위에서 나오는 모습이네요. 그리고 0봉전 시가 아래에서 종가 마감되는 모습입니다.\n0봉전, 1봉전, 2봉전이 이해가 안되신다면 아래 그림 한번 보고 오시죠.\n[이미지]\n0봉전은 오늘을 말합니다. 그리고 1봉전은 어제. 그제가 2봉전 캔들이 되는 겁니다. 이해되시나요?\n그럼 다시 패턴을 읽어보죠. 오늘의 시가 아래에서&그제 종가 위에서 도지 캔들이 만들어져야 하는 모습입니다.\n여기에서 제일 중요한 게 하나 빠졌죠. 뭘까요?\n바로 거래량입니다.\n차트 매매는 캔들로만 매매하는 게 아니라 무조건 거래량&거래대금이 같이 따라와야 합니다."
+    },
+    {
+      "image_file": "img_003.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfNTMg/MDAxNzIzNjUwODAzMzcw.Ih6gxg3la9WDmCR0cZoZoOf-Bps4Z9UkWArJecDN190g.S5KOUDwhHIT_UzVw6d9sULa0wBFymq5SZq4mIKVIQGIg.PNG/SE-ebc69cba-e02f-4940-b210-b3f5d2bf888a.png?type=w966",
+      "context_before": "0봉전은 오늘을 말합니다. 그리고 1봉전은 어제. 그제가 2봉전 캔들이 되는 겁니다. 이해되시나요?\n그럼 다시 패턴을 읽어보죠. 오늘의 시가 아래에서&그제 종가 위에서 도지 캔들이 만들어져야 하는 모습입니다.\n여기에서 제일 중요한 게 하나 빠졌죠. 뭘까요?\n바로 거래량입니다.\n차트 매매는 캔들로만 매매하는 게 아니라 무조건 거래량&거래대금이 같이 따라와야 합니다.",
+      "context_after": "매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎",
+      "combined_context": "0봉전은 오늘을 말합니다. 그리고 1봉전은 어제. 그제가 2봉전 캔들이 되는 겁니다. 이해되시나요?\n그럼 다시 패턴을 읽어보죠. 오늘의 시가 아래에서&그제 종가 위에서 도지 캔들이 만들어져야 하는 모습입니다.\n여기에서 제일 중요한 게 하나 빠졌죠. 뭘까요?\n바로 거래량입니다.\n차트 매매는 캔들로만 매매하는 게 아니라 무조건 거래량&거래대금이 같이 따라와야 합니다.\n[이미지]\n매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎"
+    },
+    {
+      "image_file": "img_004.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfODIg/MDAxNzIzNjUxMDA5NTUx.Tzqk4_frgqkMHpgrLfyWiPXEMbbOhxylp07M8l22r60g.kNyaBxrtYqq0dK-5OGo2q3KN2dIwuzYKaAvLFRrtxXsg.PNG/image.png?type=w966",
+      "context_before": "매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎",
+      "context_after": "먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)",
+      "combined_context": "매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎\n[이미지]\n먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)"
+    },
+    {
+      "image_file": "img_005.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTcy/MDAxNzIzNjUyMjM0MDAy.JauqlS5d34eJPVq6AR4ca4bOoplSlbNWLC6qAjBcADsg.2S6Ra5WjRP8c6SYSBkfrk-6LVnclNwwcuWqfvc2oseQg.PNG/image.png?type=w966",
+      "context_before": "매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎",
+      "context_after": "먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)",
+      "combined_context": "매매의 기준이 되는 2봉전 양봉에는 무조건 거래량이 함께 터져야 합니다. 그게 종목을 고르는 첫번째 기준이 됩니다.\n그리고 1봉전 도지 캔들은 2봉전 양봉의 거래량보다 눈에띄게 확연하게 팍! 죽어야 합니다. 눌림에는 거래량이 없을수록&적을수록 좋습니다.\n그래야 확률은 올라갑니다. 세력들은 남들 눈에 띄게 매집하지 않아요..ㅎ 눌림매매는 관심 받지않는 차트일 수록 좋습니다.\n​\n마지막 0봉전 캔들의 거래량은 2봉전 캔들(양봉)보다 크면 좋지만 적게 터질 수도, 많이 터질 수도 있습니다.\n중요한 건 1봉전 캔들(도지 캔들)의 거래량보다는 많이 터져야 한다는 거겠죠.\n​\n​\n위에 내용들을 압축해 검색기를 한번 만들어 봅시다. 꼬우꼬우!😎\n[이미지]\n먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)"
+    },
+    {
+      "image_file": "img_006.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjIg/MDAxNzIzNjYxMzk4MTU0.z3cW4eX8CqFJVN9vaTt5svU7GKckROaLP_JTZkDysh8g.H9rMg95gPEwkYtPV-CK_ShsZaq8He0kM3QKMgt7zWVEg.PNG/SE-fef1251a-048e-4d24-b7c1-5a66e3d4495e.png?type=w966",
+      "context_before": "먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)",
+      "context_after": "이렇게 검색해 보니 25개의 종목이 생겼습니다.\n이제 도지 캔들을 정의해 줘야겠죠. 여기에서 중요한 게 2봉전 종가 위에서 도지 캔들이 시작해야 한다는 기준이 있었죠?\n하지만 모든 차트가 정답처럼 완벽하게 떨어지지 않기 때문에, 이 기준은 기준봉 범위 안에서\n변곡점 캔들이 만들어지는 모습으로 설정을 바꿔봅시다. 아래 그림처럼요.",
+      "combined_context": "먼저 키움 기준 [0150] 조건검색 창 하나를 열어 검색기 만들 준비를 해주세요.\n그리고 대상 변경에 들어가셔서 제외종목들을 체크해 주세요. 여기까지 다 하셨다면 매매의 기준이 되는 2봉전 캔들을 정의해 봅시다.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것\n3) 거래대금은 200억 이상 들어올 것\n​\n여기에서 2번과 3번은 OR로 묶을 건데요. 묵는 이유는 대형주들은 거래량이 소형주나 중형주처럼 크게 터지지 않기 때문입니다.\n그럼 여기에서 조금 수정해 보면, 2번에는 거래대금을 추가하고 3번에는 거래량을 추가해 주면 OR 로 묶었을 때도 서로 보완이 되겠죠.\n​\n1) 양봉의 길이는 5% 이상일 것\n2) 전봉 거래량 대비 1000% 이상 터질 것 + 거래대금은 200억 이상 (중,소형주)\nor\n3) 거래대금은 200억 이상 들어올 것 +전봉 거래량 대비 200% 이상 터질 것 (대형주)\n​\n이 정도만 설정해 줘도 첫 기준은 만들어질 것 같습니다.(3번의 거래대금은 더 커도 상관없음)\n[이미지]\n이렇게 검색해 보니 25개의 종목이 생겼습니다.\n이제 도지 캔들을 정의해 줘야겠죠. 여기에서 중요한 게 2봉전 종가 위에서 도지 캔들이 시작해야 한다는 기준이 있었죠?\n하지만 모든 차트가 정답처럼 완벽하게 떨어지지 않기 때문에, 이 기준은 기준봉 범위 안에서\n변곡점 캔들이 만들어지는 모습으로 설정을 바꿔봅시다. 아래 그림처럼요."
+    },
+    {
+      "image_file": "img_007.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTg4/MDAxNzIzNjUzMDc2MDQy.MJD2XJNgaXDVH_M2h-vy6cvWhm62n_D2jqmU1DIWAK4g.-gOScG6MZ9k8TKGO449R-sbXjnb7jenNyFACMTDVXhkg.PNG/SE-bf9b823c-3cd8-41d9-910d-32e24eb3d3bf.png?type=w966",
+      "context_before": "이렇게 검색해 보니 25개의 종목이 생겼습니다.\n이제 도지 캔들을 정의해 줘야겠죠. 여기에서 중요한 게 2봉전 종가 위에서 도지 캔들이 시작해야 한다는 기준이 있었죠?\n하지만 모든 차트가 정답처럼 완벽하게 떨어지지 않기 때문에, 이 기준은 기준봉 범위 안에서\n변곡점 캔들이 만들어지는 모습으로 설정을 바꿔봅시다. 아래 그림처럼요.",
+      "context_after": "변곡점 캔들이 음봉 캔들 기준 -5% 이상을 넘지 말 것, 양봉 캔들 기준 +8% 이상을 넘지 말라는 기준도 같이 넣어 줍시다.\n(도지캔들 기준, 음봉이 큰게 싫다면 -의 범위를 늘리고, 양봉캔들이 큰게 싫다면 +의 범위를 줄이시면 되겠죠. 0에 가까울수록 도지캔들이 됩니다. H항목에서 수정 가능.)\n​\n그리고 제일 중요한 거래량이 팍! 죽어야 한다는 것도요.",
+      "combined_context": "이렇게 검색해 보니 25개의 종목이 생겼습니다.\n이제 도지 캔들을 정의해 줘야겠죠. 여기에서 중요한 게 2봉전 종가 위에서 도지 캔들이 시작해야 한다는 기준이 있었죠?\n하지만 모든 차트가 정답처럼 완벽하게 떨어지지 않기 때문에, 이 기준은 기준봉 범위 안에서\n변곡점 캔들이 만들어지는 모습으로 설정을 바꿔봅시다. 아래 그림처럼요.\n[이미지]\n변곡점 캔들이 음봉 캔들 기준 -5% 이상을 넘지 말 것, 양봉 캔들 기준 +8% 이상을 넘지 말라는 기준도 같이 넣어 줍시다.\n(도지캔들 기준, 음봉이 큰게 싫다면 -의 범위를 늘리고, 양봉캔들이 큰게 싫다면 +의 범위를 줄이시면 되겠죠. 0에 가까울수록 도지캔들이 됩니다. H항목에서 수정 가능.)\n​\n그리고 제일 중요한 거래량이 팍! 죽어야 한다는 것도요."
+    },
+    {
+      "image_file": "img_008.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTIx/MDAxNzIzNjYxMzkxNzky.v_-_j6FJ-vQRSgXMEg63oGEaUcA527XotJEMqq83V2gg.tlX-pcnJrVq08x8O1dXVk8hK43lSI300r-9HECW28lEg.PNG/SE-6e5a1163-cc09-43eb-83c2-86450dccc3e0.png?type=w966",
+      "context_before": "변곡점 캔들이 음봉 캔들 기준 -5% 이상을 넘지 말 것, 양봉 캔들 기준 +8% 이상을 넘지 말라는 기준도 같이 넣어 줍시다.\n(도지캔들 기준, 음봉이 큰게 싫다면 -의 범위를 늘리고, 양봉캔들이 큰게 싫다면 +의 범위를 줄이시면 되겠죠. 0에 가까울수록 도지캔들이 됩니다. H항목에서 수정 가능.)\n​\n그리고 제일 중요한 거래량이 팍! 죽어야 한다는 것도요.",
+      "context_after": "그럼 총 8개의 종목이 뜹니다.\n이걸로 성과 검증을 돌려보죠.",
+      "combined_context": "변곡점 캔들이 음봉 캔들 기준 -5% 이상을 넘지 말 것, 양봉 캔들 기준 +8% 이상을 넘지 말라는 기준도 같이 넣어 줍시다.\n(도지캔들 기준, 음봉이 큰게 싫다면 -의 범위를 늘리고, 양봉캔들이 큰게 싫다면 +의 범위를 줄이시면 되겠죠. 0에 가까울수록 도지캔들이 됩니다. H항목에서 수정 가능.)\n​\n그리고 제일 중요한 거래량이 팍! 죽어야 한다는 것도요.\n[이미지]\n그럼 총 8개의 종목이 뜹니다.\n이걸로 성과 검증을 돌려보죠."
+    },
+    {
+      "image_file": "img_009.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTQz/MDAxNzIzNjYyNjA2Mzkz.eoXarp1RJvlIdSmveFYophG3reLO0BMJUOViWOVIjlsg.ZdTCwxhbWs_6EZ1EgJz66akLq7gbog8nU2tytwStbNYg.PNG/SE-dfd9e61d-2a56-449b-b1a7-b26890a79871.png?type=w966",
+      "context_before": "그럼 총 8개의 종목이 뜹니다.\n이걸로 성과 검증을 돌려보죠.",
+      "context_after": "8월 8일에 휴마시스,현대바이오랜드 종목이 떴네요.\n근데 위치가 이상하죠? 8월 7일인 도지 캔들에 안 뜨고 그다음 날인 양봉에 검색됐는데요.\n그 이유는 바람개비 패턴을 만들고 당일 상승 나올 종목을 고르기 위해 2봉전 캔들을 기준으로 만들었기 때문입니다.\n8월 7일에 뜨게 하려면 2봉전을 1봉전으로 수정하시면 되겠죠. 이렇게요.",
+      "combined_context": "그럼 총 8개의 종목이 뜹니다.\n이걸로 성과 검증을 돌려보죠.\n[이미지]\n8월 8일에 휴마시스,현대바이오랜드 종목이 떴네요.\n근데 위치가 이상하죠? 8월 7일인 도지 캔들에 안 뜨고 그다음 날인 양봉에 검색됐는데요.\n그 이유는 바람개비 패턴을 만들고 당일 상승 나올 종목을 고르기 위해 2봉전 캔들을 기준으로 만들었기 때문입니다.\n8월 7일에 뜨게 하려면 2봉전을 1봉전으로 수정하시면 되겠죠. 이렇게요."
+    },
+    {
+      "image_file": "img_010.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTEw/MDAxNzIzNjYxMzg0MjEy.nWtXWw6DIMKQoyK7FDYX5PrvAOejmcYUbQwstntoehwg.Fr_avXX0pJY68Qm-3gGPQLrYq7j5eHJHcKlzWlls8egg.PNG/SE-219d0f7d-5830-4516-ad42-ccd50cf63797.png?type=w966",
+      "context_before": "8월 8일에 휴마시스,현대바이오랜드 종목이 떴네요.\n근데 위치가 이상하죠? 8월 7일인 도지 캔들에 안 뜨고 그다음 날인 양봉에 검색됐는데요.\n그 이유는 바람개비 패턴을 만들고 당일 상승 나올 종목을 고르기 위해 2봉전 캔들을 기준으로 만들었기 때문입니다.\n8월 7일에 뜨게 하려면 2봉전을 1봉전으로 수정하시면 되겠죠. 이렇게요.",
+      "context_after": "이렇게 수정하시면 25개의 종목이 검색되게 됩니다.",
+      "combined_context": "8월 8일에 휴마시스,현대바이오랜드 종목이 떴네요.\n근데 위치가 이상하죠? 8월 7일인 도지 캔들에 안 뜨고 그다음 날인 양봉에 검색됐는데요.\n그 이유는 바람개비 패턴을 만들고 당일 상승 나올 종목을 고르기 위해 2봉전 캔들을 기준으로 만들었기 때문입니다.\n8월 7일에 뜨게 하려면 2봉전을 1봉전으로 수정하시면 되겠죠. 이렇게요.\n[이미지]\n이렇게 수정하시면 25개의 종목이 검색되게 됩니다."
+    },
+    {
+      "image_file": "img_011.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfNzkg/MDAxNzIzNjYyNjE3NTEy.38Bkf1Jp9zwjP04C0MOfbompowBMp7ZEvrVfn2Iuemgg.6SuGP4oPtt0USji5w_gjuUk245G3mgFGsyPx754hh7Ag.PNG/SE-cccb410a-4d39-4d1f-811c-05a19380e47b.png?type=w966",
+      "context_before": "이렇게 수정하시면 25개의 종목이 검색되게 됩니다.",
+      "context_after": "그리고 8월 7일엔  휴마시스와 현대바이오랜드가 검색되는 거고요. 너무 쉽죠?😆\n​\n전날 미리 관심종목으로 뽑아놓고 싶다 → 1봉전으로 검색.\n당일 상승 나올 종목만 보고 싶다 → 2봉전으로 검색.\n​\n이렇게 응용해서 사용하시면 될 것 같습니다.",
+      "combined_context": "이렇게 수정하시면 25개의 종목이 검색되게 됩니다.\n[이미지]\n그리고 8월 7일엔  휴마시스와 현대바이오랜드가 검색되는 거고요. 너무 쉽죠?😆\n​\n전날 미리 관심종목으로 뽑아놓고 싶다 → 1봉전으로 검색.\n당일 상승 나올 종목만 보고 싶다 → 2봉전으로 검색.\n​\n이렇게 응용해서 사용하시면 될 것 같습니다."
+    },
+    {
+      "image_file": "img_012.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjY4/MDAxNzIzNjYxMzc1MDEz.5MkZ9wNuxxLHxphJQYymudaD7Q4NnFZ2IdwWQE_BgoQg._nWg7a4KqQQU3PEQBScIHpHm-jcJjjCuXHDfdcyvXeAg.PNG/SE-5c24aec7-0bd1-4c67-9d56-407686c6e882.png?type=w966",
+      "context_before": "*저는 당일 상승 나오는 게 더 좋아요ㅋㅋ",
+      "context_after": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!",
+      "combined_context": "*저는 당일 상승 나오는 게 더 좋아요ㅋㅋ\n[이미지]\n당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!"
+    },
+    {
+      "image_file": "img_013.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTIg/MDAxNzIzNjYyNjI0Njg2.-i0_PAqXOTdvAoK6THG4B7QlPKPZkqwGP2SCNfdz5OUg.bQ0zdqnTBm7d0arGHHgEDp3Sn4_pIn55BUOXFhWgzN8g.PNG/SE-cf3341e8-8bc3-4954-b840-0cc52996f187.png?type=w966",
+      "context_before": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!",
+      "context_after": "텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다.",
+      "combined_context": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!\n[이미지]\n텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다."
+    },
+    {
+      "image_file": "img_014.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjY2/MDAxNzIzNjYyNjQwMDA2.CbuOzE2v4UlZ_X__EJNZDk5fvStPTGmyLEUbDD_whIMg.j9MuQFl03-L8-JNxRksT8GXLLdTIQWFVUR1PPSjWK2Qg.PNG/SE-42c39a38-8bb3-4e1a-9add-198fd59f5746.png?type=w966",
+      "context_before": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!",
+      "context_after": "텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다.",
+      "combined_context": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!\n[이미지]\n텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다."
+    },
+    {
+      "image_file": "img_015.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMjQ3/MDAxNzIzNjYyNjM1MzU5.UHWnAAys4VfNGBS6o5c73jlDy4rPJfuS4NvrsosMXDcg.JZK2TFkJ-8da58lri2Tx0PnPKYQ7Nw9onRsO6GOuIXwg.PNG/SE-b65b2cd3-6def-4ff4-a5d6-77b27a4c98b3.png?type=w966",
+      "context_before": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!",
+      "context_after": "텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다.",
+      "combined_context": "당일 상승 종목은 주가 비교 항목 하나 더 추가해 주면 좋겠죠~!\n[이미지]\n텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다."
+    },
+    {
+      "image_file": "img_016.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfOTIg/MDAxNzIzNjYyNjMwMjQw.cTMTPZhbkkO-Tg4waenavAsycD_nBPE7WXUrmwcpFa8g.3DcUbIEWDQIIhCqkCIcaCXW8-3C3D5eQAfj5jPR1HL0g.PNG/SE-289414d3-1500-42bb-bf82-2d30575fb257.png?type=w966",
+      "context_before": "텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다.",
+      "context_after": "14일 기준 성우하이텍도 있고요.\n​\n차트보는 좋은 눈을 가지고 계시다면 쓸만한 급등주 검색기 일 겁니다.\n검색기 만들 수 있는 분들은 지금 항목에서 더 디테일하게 기준을 추가하셔도 되고요.\n적절하게 잘 섞어서 쓰시길 바랍니다.\n​\n*양음양 매매는 매매일지에서도 여러번 매매팁 드렸습니다. 그걸 보시고 디테일을 더 추가하시면 되겠죠.\n​",
+      "combined_context": "텔레그램 차트방에서 한 번씩 언급됐었던 나노팀과 KT&G  종목도 보입니다.\n[이미지]\n14일 기준 성우하이텍도 있고요.\n​\n차트보는 좋은 눈을 가지고 계시다면 쓸만한 급등주 검색기 일 겁니다.\n검색기 만들 수 있는 분들은 지금 항목에서 더 디테일하게 기준을 추가하셔도 되고요.\n적절하게 잘 섞어서 쓰시길 바랍니다.\n​\n*양음양 매매는 매매일지에서도 여러번 매매팁 드렸습니다. 그걸 보시고 디테일을 더 추가하시면 되겠죠.\n​"
+    },
+    {
+      "image_file": "img_017.png",
+      "image_url": "https://postfiles.pstatic.net/MjAyNDA4MTVfMTc0/MDAxNzIzNjYxMzU4Njgz.-zTlvp_eyeuuu5yaYbyp8AQ7sXYHY83_cPJOn_o3ueQg.KGnDU6bw2XHjHhEPvZREzfzqO3ra7O5MdovtkRKbNDcg.PNG/SE-2b0ba86f-95ce-42b4-a65b-513cb350c633.png?type=w966",
+      "context_before": "​\n💡아무리 좋은 검색기라도 그 안에서 상승할 종목 하나 못 고른다면 쓰나 마나 한 검색기입니다.\n검색기에 종목이 뜬다고 모든 종목이 상승하진 않으니까요.\n100개의 종목이 뜨는 검색기에서도 상승 나올 종목 하나 찾을 수 있어야 합니다.\n눈으로 먼저 종목을 찾을 수 있는 실력을 키우시길 바랍니다. 기법보다 제일 중요한 건 기본기입니다.\n이렇게 말해도 그냥 막 쓰시는 분들 계시겠죠? 그에 따른 대가는 스스로 치르시길 바랍니다.\n​\n​\n엑셀파일 안열리시는 분들은 아래 참고.\n↓↓↓",
+      "context_after": "*몸통길이 조건식 → 패턴정의로 검색.",
+      "combined_context": "​\n💡아무리 좋은 검색기라도 그 안에서 상승할 종목 하나 못 고른다면 쓰나 마나 한 검색기입니다.\n검색기에 종목이 뜬다고 모든 종목이 상승하진 않으니까요.\n100개의 종목이 뜨는 검색기에서도 상승 나올 종목 하나 찾을 수 있어야 합니다.\n눈으로 먼저 종목을 찾을 수 있는 실력을 키우시길 바랍니다. 기법보다 제일 중요한 건 기본기입니다.\n이렇게 말해도 그냥 막 쓰시는 분들 계시겠죠? 그에 따른 대가는 스스로 치르시길 바랍니다.\n​\n​\n엑셀파일 안열리시는 분들은 아래 참고.\n↓↓↓\n[이미지]\n*몸통길이 조건식 → 패턴정의로 검색."
+    }
+  ],
+  "stats": {
+    "text_blocks": 18,
+    "images": 17,
+    "images_downloaded": 17
+  }
+}

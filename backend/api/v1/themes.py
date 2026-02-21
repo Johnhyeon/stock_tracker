@@ -4,10 +4,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from core.config import get_settings
 from core.database import get_db
 from services.theme_service import ThemeService
+from services.theme_map_service import get_theme_map_service
 from services.youtube_service import YouTubeService
-from services.trader_service import TraderService
+from services.expert_service import ExpertService
 from schemas.theme import (
     ThemeRotationResponse,
     ThemeListItem,
@@ -25,10 +27,10 @@ def get_theme_rotation(
 ):
     """테마 순환매 분석.
 
-    YouTube와 트레이더 관심종목 데이터를 기반으로 현재 핫한 테마를 분석합니다.
+    YouTube와 전문가 관심종목 데이터를 기반으로 현재 핫한 테마를 분석합니다.
 
     분석 요소:
-    - YouTube 언급 + 트레이더 언급 횟수
+    - YouTube 언급 + 전문가 언급 횟수
     - 테마 내 관심 종목 수
     - 평균 주가 상승률
     - 총 거래량
@@ -46,13 +48,17 @@ def get_theme_rotation(
         include_price=True
     )
 
-    # 트레이더 데이터 수집
-    trader_service = TraderService(db)
-    trader_raw = trader_service.get_hot_stocks(
-        days_back=days_back,
-        limit=50,
-        include_price=True
-    )
+    # 전문가 데이터 수집
+    _settings = get_settings()
+    if _settings.expert_feature_enabled:
+        expert_service = ExpertService(db)
+        expert_raw = expert_service.get_hot_stocks(
+            days_back=days_back,
+            limit=50,
+            include_price=True
+        )
+    else:
+        expert_raw = []
 
     # 테마 분석에 필요한 필드만 추출 (둘 다 dict)
     youtube_list = [
@@ -66,7 +72,7 @@ def get_theme_rotation(
         for s in youtube_raw
     ]
 
-    trader_list = [
+    expert_list = [
         {
             "stock_code": s.get("stock_code"),
             "stock_name": s.get("stock_name"),
@@ -74,14 +80,14 @@ def get_theme_rotation(
             "volume": s.get("volume"),
             "price_change_rate": s.get("price_change_rate"),
         }
-        for s in trader_raw
+        for s in expert_raw
     ]
 
     # 테마 분석
     theme_service = ThemeService(db)
     result = theme_service.analyze_theme_rotation(
         youtube_data=youtube_list,
-        trader_data=trader_list,
+        expert_data=expert_list,
         days=days_back,
     )
 
@@ -131,8 +137,8 @@ def get_theme_stocks(
 
     해당 테마에 속한 모든 종목을 반환합니다.
     """
-    theme_service = ThemeService(db)
-    stocks = theme_service.get_stocks_in_theme(theme_name)
+    theme_map_service = get_theme_map_service()
+    stocks = theme_map_service.get_stocks_in_theme(theme_name)
 
     if not stocks:
         return {"theme_name": theme_name, "stocks": [], "stock_count": 0}

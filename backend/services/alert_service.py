@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Any
 from uuid import UUID
 
+from core.timezone import now_kst, today_kst
+
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +15,7 @@ from models.ticker_stats import TickerMentionStats
 from models.disclosure import Disclosure, DisclosureImportance
 from models.idea import InvestmentIdea, IdeaStatus
 from models.position import Position
-from models.trader_mention import TraderMention
+from models.expert_mention import ExpertMention
 from integrations.telegram.client import get_telegram_client
 from integrations.email.client import get_email_client
 from core.config import get_settings
@@ -258,7 +260,7 @@ class AlertService:
                     cooldown_until = rule.last_triggered_at + timedelta(
                         minutes=rule.cooldown_minutes
                     )
-                    if datetime.utcnow() < cooldown_until:
+                    if now_kst().replace(tzinfo=None) < cooldown_until:
                         continue
 
                 # 규칙 유형별 처리
@@ -278,7 +280,7 @@ class AlertService:
                     if success:
                         triggered_count += 1
                         # 마지막 발송 시간 업데이트
-                        rule.last_triggered_at = datetime.utcnow()
+                        rule.last_triggered_at = now_kst().replace(tzinfo=None)
                         await self.db.commit()
 
             except Exception as e:
@@ -309,11 +311,15 @@ class AlertService:
         elif rule.alert_type == AlertType.TIME_EXPIRED:
             return await self._check_time_expired(rule.conditions)
 
-        elif rule.alert_type == AlertType.TRADER_NEW_MENTION:
-            return await self._check_trader_new_mentions(rule.conditions)
+        elif rule.alert_type == AlertType.EXPERT_NEW_MENTION:
+            if not self.settings.expert_feature_enabled:
+                return []
+            return await self._check_expert_new_mentions(rule.conditions)
 
-        elif rule.alert_type == AlertType.TRADER_CROSS_CHECK:
-            return await self._check_trader_cross_check(rule.conditions)
+        elif rule.alert_type == AlertType.EXPERT_CROSS_CHECK:
+            if not self.settings.expert_feature_enabled:
+                return []
+            return await self._check_expert_cross_check(rule.conditions)
 
         return []
 
@@ -324,7 +330,7 @@ class AlertService:
         threshold = conditions.get("threshold", 5)  # 언급 급증 기준
         hours = conditions.get("time_window_hours", 24)
 
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = now_kst().replace(tzinfo=None) - timedelta(hours=hours)
 
         # 최근 기간 내 언급이 급증한 종목 조회
         result = await self.db.execute(
@@ -355,7 +361,7 @@ class AlertService:
         hours = conditions.get("time_window_hours", 24)
         stock_codes = conditions.get("stock_codes", [])
 
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = now_kst().replace(tzinfo=None) - timedelta(hours=hours)
 
         query = select(Disclosure).where(
             Disclosure.published_at >= since,
@@ -441,13 +447,13 @@ class AlertService:
             select(InvestmentIdea).where(
                 InvestmentIdea.status == IdeaStatus.ACTIVE,
                 InvestmentIdea.expected_date.isnot(None),
-                InvestmentIdea.expected_date < datetime.utcnow().date(),
+                InvestmentIdea.expected_date < today_kst(),
             )
         )
         ideas = result.scalars().all()
 
         for idea in ideas:
-            days_over = (datetime.utcnow().date() - idea.expected_date).days
+            days_over = (today_kst() - idea.expected_date).days
             alerts.append({
                 "title": f"예상 기간 초과: {idea.stock_code}",
                 "message": f"예상일로부터 {days_over}일 경과\n원래 예상일: {idea.expected_date}",
@@ -457,45 +463,45 @@ class AlertService:
 
         return alerts
 
-    async def _check_trader_new_mentions(self, conditions: dict) -> List[dict]:
-        """트레이더 신규 언급 체크."""
+    async def _check_expert_new_mentions(self, conditions: dict) -> List[dict]:
+        """전문가 신규 언급 체크."""
         alerts = []
 
         hours = conditions.get("time_window_hours", 24)
         min_mentions = conditions.get("min_mentions", 2)  # 최소 언급 횟수
 
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = now_kst().replace(tzinfo=None) - timedelta(hours=hours)
 
         # 최근 기간 내 신규 언급된 종목
         result = await self.db.execute(
             select(
-                TraderMention.stock_name,
-                TraderMention.stock_code,
-                func.count(TraderMention.id).label("mention_count"),
+                ExpertMention.stock_name,
+                ExpertMention.stock_code,
+                func.count(ExpertMention.id).label("mention_count"),
             )
-            .where(TraderMention.created_at >= since)
-            .group_by(TraderMention.stock_name, TraderMention.stock_code)
-            .having(func.count(TraderMention.id) >= min_mentions)
+            .where(ExpertMention.created_at >= since)
+            .group_by(ExpertMention.stock_name, ExpertMention.stock_code)
+            .having(func.count(ExpertMention.id) >= min_mentions)
         )
         mentions = result.all()
 
         for mention in mentions:
             alerts.append({
-                "title": f"트레이더 주목: {mention.stock_name}",
+                "title": f"전문가 주목: {mention.stock_name}",
                 "message": f"최근 {hours}시간 동안 {mention.mention_count}회 언급됨\n종목코드: {mention.stock_code or '미확인'}",
-                "entity_type": "trader_mention",
+                "entity_type": "expert_mention",
                 "entity_id": mention.stock_name,
             })
 
         return alerts
 
-    async def _check_trader_cross_check(self, conditions: dict) -> List[dict]:
-        """내 아이디어 종목과 트레이더 언급 교차 체크."""
+    async def _check_expert_cross_check(self, conditions: dict) -> List[dict]:
+        """내 아이디어 종목과 전문가 언급 교차 체크."""
         alerts = []
 
         hours = conditions.get("time_window_hours", 24)
 
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = now_kst().replace(tzinfo=None) - timedelta(hours=hours)
 
         # 내 활성 아이디어의 종목 코드
         ideas_result = await self.db.execute(
@@ -516,18 +522,18 @@ class AlertService:
         if not idea_tickers:
             return alerts
 
-        # 트레이더가 언급한 종목 중 내 종목
+        # 전문가가 언급한 종목 중 내 종목
         result = await self.db.execute(
             select(
-                TraderMention.stock_name,
-                TraderMention.stock_code,
-                func.count(TraderMention.id).label("mention_count"),
+                ExpertMention.stock_name,
+                ExpertMention.stock_code,
+                func.count(ExpertMention.id).label("mention_count"),
             )
             .where(
-                TraderMention.created_at >= since,
-                TraderMention.stock_code.in_(list(idea_tickers)),
+                ExpertMention.created_at >= since,
+                ExpertMention.stock_code.in_(list(idea_tickers)),
             )
-            .group_by(TraderMention.stock_name, TraderMention.stock_code)
+            .group_by(ExpertMention.stock_name, ExpertMention.stock_code)
         )
         mentions = result.all()
 
@@ -535,9 +541,9 @@ class AlertService:
             idea = idea_map.get(mention.stock_code)
             idea_title = idea.title if idea else "알 수 없음"
             alerts.append({
-                "title": f"트레이더도 주목: {mention.stock_name}",
-                "message": f"내 아이디어 '{idea_title}'의 종목\n최근 {hours}시간 동안 트레이더 {mention.mention_count}회 언급",
-                "entity_type": "trader_cross_check",
+                "title": f"전문가도 주목: {mention.stock_name}",
+                "message": f"내 아이디어 '{idea_title}'의 종목\n최근 {hours}시간 동안 전문가 {mention.mention_count}회 언급",
+                "entity_type": "expert_cross_check",
                 "entity_id": mention.stock_code,
             })
 

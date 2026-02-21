@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from typing import Optional, Callable, Any
 
+from core.timezone import now_kst
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -106,7 +108,7 @@ class SchedulerManager:
         """
         # 장 시간 체크를 포함하는 래퍼 함수
         async def market_hours_wrapper():
-            now = datetime.now()
+            now = now_kst()
             # 주말 체크
             if now.weekday() >= 5:  # 토(5), 일(6)
                 logger.debug(f"Skipping {job_id}: weekend")
@@ -174,9 +176,9 @@ class SchedulerManager:
         """기본 작업 등록."""
         from scheduler.jobs.price_update import update_active_position_prices
         from scheduler.jobs.disclosure_collect import collect_disclosures_for_active_positions
-        from scheduler.jobs.youtube_collect import collect_youtube_videos
+        from scheduler.jobs.youtube_collect import collect_youtube_videos, collect_youtube_hot_videos
         from scheduler.jobs.alert_check import check_alerts
-        from scheduler.jobs.trader_sync import sync_trader_mentions
+        from scheduler.jobs.expert_sync import sync_expert_mentions
         from scheduler.jobs.news_collect import collect_theme_news
         from scheduler.jobs.chart_pattern_analyze import analyze_chart_patterns
         from scheduler.jobs.theme_setup_calculate import calculate_theme_setups
@@ -185,6 +187,14 @@ class SchedulerManager:
         from scheduler.jobs.telegram_monitor import monitor_telegram_channels
         from scheduler.jobs.etf_collect import collect_etf_ohlcv_daily
         from scheduler.jobs.etf_rotation_notify import notify_rotation_signals
+        from scheduler.jobs.snapshot_collect import collect_daily_snapshots
+        from scheduler.jobs.financial_collect import collect_financial_statements_job, sync_dart_corp_codes_job
+        from scheduler.jobs.daily_report import send_daily_report
+        from scheduler.jobs.narrative_generate import generate_narratives
+        from scheduler.jobs.stock_news_collect import collect_hot_stock_news, collect_all_stock_news, classify_stock_news
+        from scheduler.jobs.catalyst_track import detect_catalysts, update_catalyst_tracking
+        from scheduler.jobs.index_ohlcv_collect import collect_index_ohlcv
+        from scheduler.jobs.gap_recovery_scan import scan_gap_recovery
 
         # 활성 포지션 가격 업데이트 (장 시간에만)
         self.add_market_hours_job(
@@ -200,19 +210,27 @@ class SchedulerManager:
             minutes=self.settings.disclosure_check_interval_minutes,
         )
 
-        # YouTube 수집 (6시간마다)
+        # YouTube 수집 - 아이디어 종목 (6시간마다)
         self.add_interval_job(
             collect_youtube_videos,
             job_id="youtube_collect",
             minutes=self.settings.youtube_check_interval_hours * 60,
         )
 
-        # 트레이더 관심종목 동기화 (30분마다)
+        # YouTube 수집 - 키워드 기반 범용 (12시간마다)
         self.add_interval_job(
-            sync_trader_mentions,
-            job_id="trader_sync",
-            minutes=30,
+            collect_youtube_hot_videos,
+            job_id="youtube_hot_collect",
+            minutes=self.settings.youtube_check_interval_hours * 60 * 2,
         )
+
+        # 전문가 관심종목 동기화 (30분마다)
+        if self.settings.expert_feature_enabled:
+            self.add_interval_job(
+                sync_expert_mentions,
+                job_id="expert_sync",
+                minutes=30,
+            )
 
         # 알림 체크 (5분마다)
         self.add_interval_job(
@@ -294,6 +312,107 @@ class SchedulerManager:
             hour="17",
             minute="0",
             day_of_week="mon-fri",
+        )
+
+        # 일별 포트폴리오 스냅샷 수집 (매일 16:00 장 마감 후)
+        self.add_cron_job(
+            collect_daily_snapshots,
+            job_id="snapshot_collect",
+            hour="16",
+            minute="0",
+            day_of_week="mon-fri",
+        )
+
+        # 일일 시장 리포트 발송 (매일 19:00 - 수급 데이터 수집 후)
+        self.add_cron_job(
+            send_daily_report,
+            job_id="daily_report",
+            hour="19",
+            minute="0",
+            day_of_week="mon-fri",
+        )
+
+        # 내러티브 브리핑 자동 생성 (매일 17:30 장 마감 후)
+        self.add_cron_job(
+            generate_narratives,
+            job_id="narrative_generate",
+            hour="17",
+            minute="30",
+            day_of_week="mon-fri",
+        )
+
+        # 종목별 뉴스 수집 - Tier 1: 핫 종목 (2시간마다)
+        self.add_interval_job(
+            collect_hot_stock_news,
+            job_id="stock_news_collect_hot",
+            minutes=120,
+        )
+
+        # 종목별 뉴스 수집 - Tier 2: 테마맵 전체 (6시간마다)
+        self.add_interval_job(
+            collect_all_stock_news,
+            job_id="stock_news_collect_all",
+            minutes=360,
+        )
+
+        # 뉴스 Gemini 분류 (3시간마다)
+        self.add_interval_job(
+            classify_stock_news,
+            job_id="stock_news_classify",
+            minutes=180,
+        )
+
+        # 카탈리스트 감지 (매일 17:00 장 마감 후, OHLCV 수집 이후)
+        self.add_cron_job(
+            detect_catalysts,
+            job_id="catalyst_detect",
+            hour="17",
+            minute="0",
+            day_of_week="mon-fri",
+        )
+
+        # 카탈리스트 추적 업데이트 (매일 17:15)
+        self.add_cron_job(
+            update_catalyst_tracking,
+            job_id="catalyst_update",
+            hour="17",
+            minute="15",
+            day_of_week="mon-fri",
+        )
+
+        # 지수 OHLCV 수집 (매일 16:50 장 마감 후)
+        self.add_cron_job(
+            collect_index_ohlcv,
+            job_id="index_ohlcv_collect",
+            hour="16",
+            minute="50",
+            day_of_week="mon-fri",
+        )
+
+        # 장중 갭다운 회복 스캔 (장 시간 2분마다)
+        self.add_market_hours_job(
+            scan_gap_recovery,
+            job_id="gap_recovery_scan",
+            minutes=2,
+        )
+
+        # 재무제표 수집 (매주 토·수 03:00)
+        # 토: 정기 수집, 수: 분기 보고서 시즌(3/5/8/11월)에 빠른 갱신
+        self.add_cron_job(
+            collect_financial_statements_job,
+            job_id="financial_collect",
+            hour="3",
+            minute="0",
+            day_of_week="wed,sat",
+        )
+
+        # DART 고유번호 동기화 (매주 일요일 02:00)
+        self.add_cron_job(
+            sync_dart_corp_codes_job,
+            job_id="dart_corp_sync",
+            hour="2",
+            minute="0",
+            day_of_week="sun",
         )
 
     @property

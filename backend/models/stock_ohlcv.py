@@ -40,8 +40,10 @@ class StockOHLCV(Base):
 
     def to_chart_dict(self) -> dict:
         """lightweight-charts 형식으로 변환."""
+        import calendar
         from datetime import datetime as dt
-        timestamp = int(dt.combine(self.trade_date, dt.min.time()).timestamp())
+        # UTC 기준 midnight epoch (시스템 시간대 무관)
+        timestamp = calendar.timegm(dt.combine(self.trade_date, dt.min.time()).timetuple())
         return {
             "time": timestamp,
             "open": float(self.open_price),

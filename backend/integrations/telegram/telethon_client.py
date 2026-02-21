@@ -46,7 +46,14 @@ async def get_telethon_client():
 
 
 async def connect_telethon() -> bool:
-    """Telethon 클라이언트 연결."""
+    """Telethon 클라이언트 연결.
+
+    기존 세션 파일로만 연결을 시도합니다.
+    세션이 만료되었으면 터미널에서 수동으로 재인증해야 합니다:
+        python -c "from telethon.sync import TelegramClient; \
+        c = TelegramClient('stock_monitor', API_ID, API_HASH); \
+        c.start(); c.disconnect()"
+    """
     global _is_connected
 
     if not is_telethon_configured():
@@ -55,7 +62,20 @@ async def connect_telethon() -> bool:
 
     try:
         client = await get_telethon_client()
-        await client.start()
+        # start() 대신 connect()를 사용하여 인터랙티브 로그인 방지
+        await client.connect()
+
+        if not await client.is_user_authorized():
+            logger.error(
+                "Telethon 세션이 만료되었습니다. "
+                "터미널에서 수동으로 재인증하세요: "
+                "cd backend && python -c \"from telethon.sync import TelegramClient; "
+                "c = TelegramClient('stock_monitor', API_ID, API_HASH); "
+                "c.start(); c.disconnect()\""
+            )
+            await client.disconnect()
+            return False
+
         _is_connected = True
         logger.info("공유 Telethon 클라이언트 연결 성공")
         return True

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_async_db
+from core.timezone import today_kst
 from models import InvestmentIdea, Position, IdeaType, IdeaStatus
 from schemas.position_bulk import (
     QuickPositionInput,
@@ -258,7 +259,7 @@ async def create_bulk_positions(
                 ticker=stock_code,
                 quantity=quantity,
                 entry_price=Decimal(str(avg_price)) if avg_price else Decimal('0'),
-                entry_date=date.today(),
+                entry_date=today_kst(),
             )
             db.add(position)
             await db.flush()

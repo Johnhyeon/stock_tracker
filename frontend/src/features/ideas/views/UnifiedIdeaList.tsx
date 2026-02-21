@@ -47,7 +47,7 @@ function ManualIdeaCard({ idea }: { idea: Idea }) {
               <Badge variant={idea.type === 'research' ? 'default' : 'warning'} size="sm">
                 {typeLabels[idea.type]}
               </Badge>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
+              <span className="font-semibold text-gray-900 dark:text-t-text-primary">
                 {idea.tickers.join(', ') || '종목 미지정'}
               </span>
             </div>
@@ -56,11 +56,11 @@ function ManualIdeaCard({ idea }: { idea: Idea }) {
             </Badge>
           </div>
 
-          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+          <p className="text-sm text-gray-600 dark:text-t-text-muted line-clamp-2 mb-2">
             {idea.thesis}
           </p>
 
-          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-t-text-muted">
             <span>목표: {Number(idea.target_return_pct)}%</span>
             <span>기간: {idea.expected_timeframe_days}일</span>
             <span>{new Date(idea.created_at).toLocaleDateString()}</span>
@@ -132,8 +132,19 @@ export default function UnifiedIdeaList() {
     })
   }, [])
 
+  // 종목상세 네비게이션 컨텍스트
+  const stockNavList = useMemo(() => {
+    const seen = new Set<string>()
+    return telegramIdeas
+      .filter(i => { if (!i.stock_code || seen.has(i.stock_code)) return false; seen.add(i.stock_code); return true })
+      .map(i => ({ code: i.stock_code!, name: i.stock_name || i.stock_code! }))
+  }, [telegramIdeas])
+
   const handleStockClick = (stockCode: string) => {
-    navigate(`/stocks/${stockCode}`)
+    const idx = stockNavList.findIndex(s => s.code === stockCode)
+    navigate(`/stocks/${stockCode}`, {
+      state: { stockListContext: { source: '아이디어', stocks: stockNavList, currentIndex: Math.max(0, idx) } }
+    })
   }
 
   const handleAuthorClick = (author: string) => {
@@ -177,7 +188,7 @@ export default function UnifiedIdeaList() {
         const searchLower = filters.search.toLowerCase()
         const matchesStock =
           idea.stock_name?.toLowerCase().includes(searchLower) ||
-          idea.stock_code?.includes(filters.search)
+          idea.stock_code?.toLowerCase().includes(searchLower)
         if (!matchesStock) continue
       }
 
@@ -203,7 +214,7 @@ export default function UnifiedIdeaList() {
   }, [manualIdeas, telegramIdeas, filters])
 
   if (loading) {
-    return <div className="text-center py-10 text-gray-500 dark:text-gray-400">로딩 중...</div>
+    return <div className="text-center py-10 text-gray-500 dark:text-t-text-muted">로딩 중...</div>
   }
 
   if (error) {
@@ -226,7 +237,7 @@ export default function UnifiedIdeaList() {
       </div>
 
       {/* 통계 */}
-      <div className="flex items-center gap-4 mb-4 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-4 mb-4 text-sm text-gray-500 dark:text-t-text-muted">
         <span>총 {unifiedItems.length}개</span>
         <span>수동: {unifiedItems.filter((i) => i.type === 'manual').length}개</span>
         <span>텔레그램: {unifiedItems.filter((i) => i.type === 'telegram').length}개</span>
@@ -234,7 +245,7 @@ export default function UnifiedIdeaList() {
 
       {/* 통합 목록 */}
       {unifiedItems.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-10 text-gray-500 dark:text-t-text-muted">
           아이디어가 없습니다.
         </div>
       ) : (

@@ -1,11 +1,12 @@
 """공시 서비스."""
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, or_, select
 
 from models import Disclosure, DisclosureType, DisclosureImportance, InvestmentIdea, IdeaStatus
 from models.stock import Stock
@@ -28,7 +29,7 @@ class DisclosureService:
     DART API에서 공시를 수집하고 DB에 저장합니다.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Union[Session, AsyncSession]):
         self.db = db
         self.dart_client = get_dart_client()
 
@@ -99,17 +100,19 @@ class DisclosureService:
             )
 
             # DB에 저장
+            earnings_stock_codes = set()
             for disc in filtered:
                 rcept_no = disc.get("rcept_no")
 
-                # 중복 체크
-                existing = self.db.query(Disclosure).filter(
-                    Disclosure.rcept_no == rcept_no
-                ).first()
+                # 중복 체크 (비동기)
+                stmt = select(Disclosure).where(Disclosure.rcept_no == rcept_no)
+                existing = (await self.db.execute(stmt)).scalars().first()
 
                 if existing:
                     result["skipped"] += 1
                     continue
+
+                disc_type = disc.get("disclosure_type", DisclosureType.OTHER)
 
                 # 새 공시 저장
                 disclosure = Disclosure(
@@ -120,7 +123,7 @@ class DisclosureService:
                     stock_code=disc.get("stock_code"),
                     report_nm=disc.get("report_nm", ""),
                     flr_nm=disc.get("flr_nm"),
-                    disclosure_type=disc.get("disclosure_type", DisclosureType.OTHER),
+                    disclosure_type=disc_type,
                     importance=disc.get("importance", DisclosureImportance.MEDIUM),
                     summary=extract_summary(disc.get("report_nm", "")),
                     url=f"{DART_BASE_URL}{rcept_no}",
@@ -129,7 +132,12 @@ class DisclosureService:
                 self.db.add(disclosure)
                 result["new"] += 1
 
-            self.db.commit()
+                # 실적 관련 공시(분기/반기/사업보고서) 감지
+                if disc_type == DisclosureType.REGULAR and disc.get("stock_code"):
+                    earnings_stock_codes.add(disc.get("stock_code"))
+
+            await self.db.commit()
+            result["earnings_stock_codes"] = list(earnings_stock_codes)
             logger.info(
                 f"Disclosure collection completed: {result['new']} new, "
                 f"{result['skipped']} skipped"
@@ -137,7 +145,7 @@ class DisclosureService:
 
         except Exception as e:
             logger.error(f"Disclosure collection failed: {e}")
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
         return result

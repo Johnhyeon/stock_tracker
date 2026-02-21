@@ -4,6 +4,7 @@ from sqlalchemy import Column, String, Integer, Numeric, Date, DateTime, Foreign
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from core.database import Base
+from core.timezone import today_kst
 
 
 class Position(Base):
@@ -35,7 +36,7 @@ class Position(Base):
 
     @property
     def days_held(self) -> int:
-        end_date = self.exit_date or date.today()
+        end_date = self.exit_date or today_kst()
         return (end_date - self.entry_date).days
 
     @property

@@ -9,6 +9,7 @@ from typing import Optional
 import httpx
 
 from core.config import get_settings
+from core.timezone import now_kst
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class KISTokenManager:
         """토큰이 유효한지 확인 (만료 5분 전이면 무효 처리)."""
         if not self._access_token or not self._token_expires_at:
             return False
-        return datetime.now() < self._token_expires_at - timedelta(minutes=5)
+        return now_kst().replace(tzinfo=None) < self._token_expires_at - timedelta(minutes=5)
 
     def _load_token(self) -> None:
         """파일에서 저장된 토큰 로드."""
@@ -75,7 +76,7 @@ class KISTokenManager:
             data = {
                 "access_token": self._access_token,
                 "expires_at": self._token_expires_at.isoformat() if self._token_expires_at else None,
-                "saved_at": datetime.now().isoformat(),
+                "saved_at": now_kst().isoformat(),
             }
             with open(TOKEN_FILE, "w") as f:
                 json.dump(data, f, indent=2)
@@ -116,7 +117,7 @@ class KISTokenManager:
                 self._access_token = data["access_token"]
                 # KIS 토큰은 24시간 유효 (86400초)
                 expires_in = data.get("expires_in", 86400)
-                self._token_expires_at = datetime.now() + timedelta(seconds=expires_in)
+                self._token_expires_at = now_kst().replace(tzinfo=None) + timedelta(seconds=expires_in)
 
                 # 토큰을 파일에 저장
                 self._save_token()
@@ -162,8 +163,8 @@ class KISTokenManager:
             "is_valid": self.is_token_valid,
             "expires_at": self._token_expires_at.isoformat() if self._token_expires_at else None,
             "remaining_hours": (
-                round((self._token_expires_at - datetime.now()).total_seconds() / 3600, 1)
-                if self._token_expires_at and self._token_expires_at > datetime.now()
+                round((self._token_expires_at - now_kst().replace(tzinfo=None)).total_seconds() / 3600, 1)
+                if self._token_expires_at and self._token_expires_at > now_kst().replace(tzinfo=None)
                 else 0
             ),
         }

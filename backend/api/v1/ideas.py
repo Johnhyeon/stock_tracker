@@ -1,11 +1,12 @@
 import re
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from core.database import get_db
+from core.database import get_db, get_async_db
 from models import IdeaStatus, IdeaType, Stock
 from schemas import (
     IdeaCreate,
@@ -56,7 +57,7 @@ def get_all_idea_stocks(db: Session = Depends(get_db)):
     stock_codes_map = {}  # code -> ticker_label
     for idea in ideas:
         for ticker in idea.tickers:
-            match = re.search(r'\((\d{6})\)', ticker)
+            match = re.search(r'\(([A-Za-z0-9]{6})\)', ticker)
             if match:
                 code = match.group(1)
                 if code not in stock_codes_map:
@@ -74,16 +75,106 @@ def get_all_idea_stocks(db: Session = Depends(get_db)):
         name = stock_names.get(code, "")
         # ticker_label에서 이름 추출 (괄호 앞 부분)
         if not name:
-            name_match = re.match(r'(.+?)\(\d{6}\)', ticker_label)
+            name_match = re.match(r'(.+?)\([A-Za-z0-9]{6}\)', ticker_label)
             name = name_match.group(1) if name_match else code
         result.append(IdeaStockItem(code=code, name=name, ticker_label=ticker_label))
 
     return sorted(result, key=lambda x: x.name)
 
 
+@router.get("/stock-sparklines")
+async def get_stock_sparklines(
+    days: int = Query(default=60, ge=10, le=180),
+    codes: Optional[str] = Query(default=None, description="쉼표 구분 종목코드 (미지정시 활성/관찰 아이디어 종목)"),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """종목 스파크라인 데이터 일괄 조회. codes 미지정시 활성/관찰 아이디어 종목."""
+    from models import InvestmentIdea, StockOHLCV, Stock
+    from sqlalchemy import select, and_
+    from collections import defaultdict
+    from core.cache import api_cache
+    from core.timezone import today_kst
+    from datetime import timedelta
+
+    # codes가 지정된 경우: 해당 종목만 조회
+    if codes:
+        code_list = [c.strip() for c in codes.split(",") if c.strip()]
+        cache_key = f"sparklines_{'_'.join(sorted(code_list[:10]))}"
+        cached = api_cache.get(cache_key)
+        if cached:
+            return cached
+
+        # Stock 테이블에서 이름 조회
+        stocks_result = await db.execute(
+            select(Stock).where(Stock.code.in_(code_list))
+        )
+        stocks = stocks_result.scalars().all()
+        stock_map: Dict[str, str] = {s.code: s.name for s in stocks}
+        # 이름 없는 코드는 코드 자체를 이름으로
+        for c in code_list:
+            if c not in stock_map:
+                stock_map[c] = c
+    else:
+        cache_key = "idea_stock_sparklines"
+        cached = api_cache.get(cache_key)
+        if cached:
+            return cached
+
+        ideas_result = await db.execute(
+            select(InvestmentIdea).where(
+                InvestmentIdea.status.in_(["active", "watching"])
+            )
+        )
+        ideas = ideas_result.scalars().all()
+
+        stock_map = {}
+        for idea in ideas:
+            for ticker in (idea.tickers or []):
+                match = re.search(r'\(([A-Za-z0-9]{6})\)', ticker)
+                if match:
+                    code = match.group(1)
+                    if code not in stock_map:
+                        name_match = re.match(r'(.+?)\(', ticker)
+                        stock_map[code] = name_match.group(1) if name_match else code
+
+    if not stock_map:
+        return {}
+
+    since = today_kst() - timedelta(days=days)
+    ohlcv_result = await db.execute(
+        select(StockOHLCV)
+        .where(and_(
+            StockOHLCV.stock_code.in_(stock_map.keys()),
+            StockOHLCV.trade_date >= since,
+        ))
+        .order_by(StockOHLCV.stock_code, StockOHLCV.trade_date)
+    )
+    rows = ohlcv_result.scalars().all()
+
+    by_code: Dict[str, list] = defaultdict(list)
+    for r in rows:
+        by_code[r.stock_code].append({
+            "d": str(r.trade_date),
+            "c": float(r.close_price),
+        })
+
+    result = {}
+    for code, name in stock_map.items():
+        prices = by_code.get(code, [])
+        if len(prices) < 2:
+            continue
+        result[code] = {
+            "name": name,
+            "dates": [p["d"] for p in prices],
+            "closes": [p["c"] for p in prices],
+        }
+
+    api_cache.set(cache_key, result, ttl=300)
+    return result
+
+
 @router.get("/{idea_id}", response_model=IdeaWithPositions)
-def get_idea(idea_id: UUID, db: Session = Depends(get_db)):
-    import asyncio
+async def get_idea(idea_id: UUID, db: Session = Depends(get_db)):
     from decimal import Decimal
     from services.price_service import get_price_service
 
@@ -100,12 +191,12 @@ def get_idea(idea_id: UUID, db: Session = Depends(get_db)):
         if code:
             stock_codes.add(code)
 
-    # 현재가 조회
+    # 현재가 조회 (async로 직접 await)
     current_prices = {}
     if stock_codes:
         try:
             price_service = get_price_service()
-            current_prices = asyncio.run(price_service.get_multiple_prices(list(stock_codes)))
+            current_prices = await price_service.get_multiple_prices(list(stock_codes))
         except Exception:
             pass
 

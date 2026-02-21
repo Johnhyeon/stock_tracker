@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import yt_dlp
 
+from core.timezone import now_kst
+
 logger = logging.getLogger(__name__)
 
 
@@ -183,9 +185,9 @@ class YouTubeClient:
             try:
                 published_at = datetime.strptime(upload_date, '%Y%m%d').isoformat() + 'Z'
             except:
-                published_at = datetime.utcnow().isoformat() + 'Z'
+                published_at = now_kst().isoformat()
         else:
-            published_at = datetime.utcnow().isoformat() + 'Z'
+            published_at = now_kst().isoformat()
 
         # 썸네일 URL
         thumbnails = info.get('thumbnails', [])

@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import { sectorFlowApi, SectorFlowItem, SectorTreemapItem, SectorStockItem, RealtimeSectorFlowItem, themeSetupApi } from '../../services/api'
+import { sectorFlowApi, SectorFlowItem, SectorTreemapItem, SectorStockItem, RealtimeSectorFlowItem } from '../../services/api'
 import { Card } from '../../components/ui/Card'
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts'
-import { StockChart } from '../../components/StockChart'
 
 type ViewMode = 'table' | 'treemap'
 type DataMode = 'realtime' | 'history'
@@ -39,7 +38,7 @@ function getRatioColor(ratio: number): string {
   if (ratio >= 300) return 'text-red-700 font-bold'
   if (ratio >= 200) return 'text-red-600 font-semibold'
   if (ratio >= 150) return 'text-orange-600'
-  if (ratio >= 100) return 'text-gray-700'
+  if (ratio >= 100) return 'text-gray-700 dark:text-t-text-secondary'
   if (ratio >= 70) return 'text-blue-500'
   return 'text-blue-700'
 }
@@ -49,8 +48,8 @@ function getRatioBgColor(ratio: number): string {
   if (ratio >= 300) return 'bg-red-100'
   if (ratio >= 200) return 'bg-yellow-100'
   if (ratio >= 150) return 'bg-orange-50'
-  if (ratio >= 100) return 'bg-gray-50'
-  if (ratio >= 70) return 'bg-blue-50'
+  if (ratio >= 100) return 'bg-gray-50 dark:bg-t-bg-elevated'
+  if (ratio >= 70) return 'bg-blue-50 dark:bg-blue-900/20'
   return 'bg-blue-100'
 }
 
@@ -150,29 +149,29 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   const data = payload[0].payload
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border text-sm">
-      <div className="font-bold text-gray-900 mb-2">{data.name}</div>
+    <div className="bg-white dark:bg-t-bg-card p-3 rounded-lg shadow-lg border text-sm">
+      <div className="font-bold text-gray-900 dark:text-t-text-primary mb-2">{data.name}</div>
       <div className="space-y-1">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">거래대금:</span>
+          <span className="text-gray-500 dark:text-t-text-muted">거래대금:</span>
           <span className="font-medium">{formatTradingValue(data.value)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">비중:</span>
+          <span className="text-gray-500 dark:text-t-text-muted">비중:</span>
           <span className="font-medium">{data.weight}%</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">평균대비:</span>
+          <span className="text-gray-500 dark:text-t-text-muted">평균대비:</span>
           <span className={`font-medium ${getRatioColor(data.ratio)}`}>{data.ratio}%</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">외국인:</span>
+          <span className="text-gray-500 dark:text-t-text-muted">외국인:</span>
           <span className={`font-medium ${data.foreign_net >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
             {formatAmount(data.foreign_net)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-500">기관:</span>
+          <span className="text-gray-500 dark:text-t-text-muted">기관:</span>
           <span className={`font-medium ${data.institution_net >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
             {formatAmount(data.institution_net)}
           </span>
@@ -328,14 +327,14 @@ export default function SectorFlowPage() {
         <div>
           <h1 className="text-2xl font-bold">섹터별 수급</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">
               어디에 돈이 몰리고 있는가?
             </p>
             {dataMode === 'realtime' && (
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                 marketStatus === 'open'
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted'
               }`}>
                 {marketStatus === 'open' ? `장중 (${timeRatio}%)` : '장마감'}
               </span>
@@ -350,7 +349,7 @@ export default function SectorFlowPage() {
               className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                 dataMode === 'realtime'
                   ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
               }`}
             >
               실시간
@@ -360,7 +359,7 @@ export default function SectorFlowPage() {
               className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                 dataMode === 'history'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
               }`}
             >
               DB
@@ -374,7 +373,7 @@ export default function SectorFlowPage() {
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 viewMode === 'table'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
               }`}
             >
               테이블
@@ -384,7 +383,7 @@ export default function SectorFlowPage() {
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 viewMode === 'treemap'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
               }`}
             >
               트리맵
@@ -419,7 +418,7 @@ export default function SectorFlowPage() {
           <button
             onClick={fetchData}
             disabled={loading}
-            className="px-3 py-1.5 text-sm font-medium rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+            className="px-3 py-1.5 text-sm font-medium rounded bg-gray-100 dark:bg-t-bg-elevated hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border disabled:opacity-50"
           >
             {loading ? '...' : '새로고침'}
           </button>
@@ -428,7 +427,7 @@ export default function SectorFlowPage() {
 
       {/* 에러 */}
       {error && (
-        <Card className="p-4 bg-red-50 border-red-200">
+        <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200">
           <p className="text-sm text-red-700">{error}</p>
         </Card>
       )}
@@ -437,8 +436,8 @@ export default function SectorFlowPage() {
       {loading ? (
         <Card className="p-8 text-center">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/3 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/2 mx-auto"></div>
           </div>
         </Card>
       ) : viewMode === 'treemap' ? (
@@ -490,16 +489,16 @@ export default function SectorFlowPage() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-t-bg-elevated">
                 <tr>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">섹터</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">현재 거래대금</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">예상 전일대비</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">5일 평균</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">비율</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">외국인</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">기관</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">#</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">섹터</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">현재 거래대금</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">예상 전일대비</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">5일 평균</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">비율</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">기관</th>
                 </tr>
               </thead>
               <tbody>
@@ -507,9 +506,9 @@ export default function SectorFlowPage() {
                   <>
                     <tr
                       key={sector.sector_name}
-                      className={`border-t hover:bg-gray-50 cursor-pointer ${
-                        sector.is_hot ? 'bg-yellow-50' : ''
-                      } ${selectedSector === sector.sector_name ? 'bg-blue-50' : ''}`}
+                      className={`border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated cursor-pointer ${
+                        sector.is_hot ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
+                      } ${selectedSector === sector.sector_name ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                       onClick={() => handleSectorClick(sector.sector_name)}
                     >
                       <td className="py-3 px-4 text-gray-400">{idx + 1}</td>
@@ -532,10 +531,10 @@ export default function SectorFlowPage() {
                       <td className="py-3 px-4 text-right font-medium">
                         {formatTradingValue(sector.today_trading_value)}
                       </td>
-                      <td className="py-3 px-4 text-right text-gray-500">
+                      <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                         {formatTradingValue(sector.estimated_full_day)}
                       </td>
-                      <td className="py-3 px-4 text-right text-gray-500">
+                      <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                         {formatTradingValue(sector.avg_5d)}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -553,7 +552,7 @@ export default function SectorFlowPage() {
                     {/* 섹터 상세 */}
                     {selectedSector === sector.sector_name && (
                       <tr key={`${sector.sector_name}-detail`}>
-                        <td colSpan={8} className="bg-gray-50 p-4">
+                        <td colSpan={8} className="bg-gray-50 dark:bg-t-bg-elevated p-4">
                           <SectorStocksPanel
                             sectorName={sector.sector_name}
                             stocks={sectorStocks}
@@ -568,7 +567,7 @@ export default function SectorFlowPage() {
             </table>
           </div>
           {sortedRealtimeSectors.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-t-text-muted">
               데이터가 없습니다.
             </div>
           )}
@@ -578,17 +577,17 @@ export default function SectorFlowPage() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-t-bg-elevated">
                 <tr>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">섹터</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">당일 거래대금</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">5일 평균</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">10일 평균</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">20일 평균</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">비율</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">외국인</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">기관</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">#</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">섹터</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">당일 거래대금</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">5일 평균</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">10일 평균</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">20일 평균</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">비율</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">기관</th>
                 </tr>
               </thead>
               <tbody>
@@ -598,9 +597,9 @@ export default function SectorFlowPage() {
                     <>
                       <tr
                         key={sector.sector_name}
-                        className={`border-t hover:bg-gray-50 cursor-pointer ${
-                          sector.is_hot ? 'bg-yellow-50' : ''
-                        } ${selectedSector === sector.sector_name ? 'bg-blue-50' : ''}`}
+                        className={`border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated cursor-pointer ${
+                          sector.is_hot ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''
+                        } ${selectedSector === sector.sector_name ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                         onClick={() => handleSectorClick(sector.sector_name)}
                       >
                         <td className="py-3 px-4 text-gray-400">{idx + 1}</td>
@@ -623,13 +622,13 @@ export default function SectorFlowPage() {
                         <td className="py-3 px-4 text-right font-medium">
                           {formatTradingValue(sector.today_trading_value)}
                         </td>
-                        <td className="py-3 px-4 text-right text-gray-500">
+                        <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                           {formatTradingValue(sector.avg_5d)}
                         </td>
-                        <td className="py-3 px-4 text-right text-gray-500">
+                        <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                           {formatTradingValue(sector.avg_10d)}
                         </td>
-                        <td className="py-3 px-4 text-right text-gray-500">
+                        <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                           {formatTradingValue(sector.avg_20d)}
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -647,7 +646,7 @@ export default function SectorFlowPage() {
                       {/* 섹터 상세 */}
                       {selectedSector === sector.sector_name && (
                         <tr key={`${sector.sector_name}-detail`}>
-                          <td colSpan={9} className="bg-gray-50 p-4">
+                          <td colSpan={9} className="bg-gray-50 dark:bg-t-bg-elevated p-4">
                             <SectorStocksPanel
                               sectorName={sector.sector_name}
                               stocks={sectorStocks}
@@ -663,7 +662,7 @@ export default function SectorFlowPage() {
             </table>
           </div>
           {sectors.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-t-text-muted">
               데이터가 없습니다.
             </div>
           )}
@@ -671,8 +670,8 @@ export default function SectorFlowPage() {
       )}
 
       {/* 범례 및 정보 */}
-      <Card className="p-3 bg-gray-50">
-        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+      <Card className="p-3 bg-gray-50 dark:bg-t-bg-elevated">
+        <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-t-text-muted">
           <span><span className="bg-yellow-100 px-1 rounded">노란색 배경</span>: 200% 이상 (HOT 섹터)</span>
           <span><span className="text-red-500 font-medium">빨간색</span>: 순매수</span>
           <span><span className="text-blue-500 font-medium">파란색</span>: 순매도</span>
@@ -714,12 +713,12 @@ function SectorStocksPanel({ sectorName, stocks, loading }: SectorStocksPanelPro
 
   return (
     <div>
-      <h4 className="text-sm font-medium text-gray-700 mb-3">
+      <h4 className="text-sm font-medium text-gray-700 dark:text-t-text-secondary mb-3">
         {sectorName} 섹터 종목 (거래대금 상위)
       </h4>
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white dark:bg-t-bg-card rounded-lg border overflow-hidden">
         <table className="w-full text-xs">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-100 dark:bg-t-bg-elevated">
             <tr>
               <th className="text-left py-2 px-3">종목</th>
               <th className="text-right py-2 px-3">현재가</th>
@@ -731,7 +730,7 @@ function SectorStocksPanel({ sectorName, stocks, loading }: SectorStocksPanelPro
           </thead>
           <tbody>
             {stocks.map((stock) => (
-              <tr key={stock.stock_code} className="border-t hover:bg-gray-50">
+              <tr key={stock.stock_code} className="border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated">
                 <td className="py-2 px-3">
                   <div className="font-medium">{stock.stock_name}</div>
                   <div className="text-gray-400">{stock.stock_code}</div>

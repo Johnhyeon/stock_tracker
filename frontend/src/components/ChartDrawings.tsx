@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { IChartApi, ISeriesApi } from 'lightweight-charts'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 // 드로잉 타입
 export type DrawingType = 'trendline' | 'horizontal' | 'channel' | 'fibonacci' | null
@@ -41,9 +42,11 @@ export type Drawing = TrendlineDrawing | HorizontalDrawing | ChannelDrawing | Fi
 // 피보나치 레벨
 const FIBO_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
 
-// 드로잉 색상 (차트 배경이 항상 흰색이므로 검정색 고정)
-const DRAWING_COLOR = '#000000'
-const HANDLE_COLOR = '#3b82f6'  // 핸들 색상
+// 드로잉 색상 (다크모드 대응)
+const DRAWING_COLORS = {
+  light: { line: '#000000', handle: '#3b82f6', fiboBg: 'rgba(59,130,246,0.08)' },
+  dark: { line: '#e5e7eb', handle: '#60a5fa', fiboBg: 'rgba(96,165,250,0.12)' },
+} as const
 
 // localStorage 키
 const getStorageKey = (stockCode: string) => `chart-drawings-${stockCode}`
@@ -104,8 +107,11 @@ export default function ChartDrawings({
   const [magnetEnabled, setMagnetEnabled] = useState(true)
   const [renderKey, setRenderKey] = useState(0)
   const [dragState, setDragState] = useState<DragState | null>(null)
+  const { isDark } = useDarkMode()
 
-  const drawingColor = isDarkMode ? DRAWING_COLOR_DARK : DRAWING_COLOR
+  const palette = isDark ? DRAWING_COLORS.dark : DRAWING_COLORS.light
+  const drawingColor = palette.line
+  const handleColor = palette.handle
 
   // 드로잉 불러오기
   useEffect(() => {
@@ -446,33 +452,20 @@ export default function ChartDrawings({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleCancel, handleDelete, selectedDrawing])
 
-  // 차트 스크롤/줌 시 강제 리렌더링
+  // 차트 스크롤/줌 시 강제 리렌더링 (이벤트 기반 - rAF 폴링 대신)
   useEffect(() => {
-    if (!chart || !containerRef.current) return
+    if (!chart) return
 
-    let animationFrameId: number | null = null
-    let lastRange: string | null = null
-
-    const checkAndUpdate = () => {
-      const range = chart.timeScale().getVisibleLogicalRange()
-      const rangeStr = range ? `${range.from}-${range.to}` : ''
-
-      if (rangeStr !== lastRange) {
-        lastRange = rangeStr
-        setRenderKey(n => n + 1)
-      }
-      animationFrameId = requestAnimationFrame(checkAndUpdate)
+    const handleRangeChange = () => {
+      setRenderKey(n => n + 1)
     }
 
-    // 시작
-    animationFrameId = requestAnimationFrame(checkAndUpdate)
+    chart.timeScale().subscribeVisibleLogicalRangeChange(handleRangeChange)
 
     return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId)
-      }
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleRangeChange)
     }
-  }, [chart, containerRef])
+  }, [chart])
 
   // 선택 해제 (바깥 클릭)
   const handleSvgClick = useCallback(() => {
@@ -497,8 +490,8 @@ export default function ChartDrawings({
         cx={x}
         cy={y}
         r={isBeingDragged ? 8 : 6}
-        fill={HANDLE_COLOR}
-        stroke="#fff"
+        fill={handleColor}
+        stroke={isDark ? '#1f2937' : '#fff'}
         strokeWidth={2}
         style={{ cursor: 'grab', pointerEvents: 'auto' }}
         onMouseDown={(e) => handleDragStart(drawingId, pointIndex, e)}
@@ -902,25 +895,25 @@ export default function ChartDrawings({
   return (
     <>
       {/* 도구 모음 */}
-      <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 border dark:border-gray-700">
+      <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-white dark:bg-t-bg-card rounded-lg shadow-md p-1 border dark:border-t-border">
         <button
           onClick={() => setMagnetEnabled(!magnetEnabled)}
           className={`p-1.5 rounded text-xs font-medium transition-colors ${
             magnetEnabled
               ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
-              : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : 'text-gray-400 dark:text-t-text-muted hover:bg-gray-100 dark:hover:bg-t-border/50'
           }`}
           title={magnetEnabled ? '마그넷 ON (고가 스냅)' : '마그넷 OFF'}
         >
           🧲
         </button>
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+        <div className="w-px h-4 bg-gray-300 dark:bg-t-border-hover" />
         <button
           onClick={() => { setActiveTool(activeTool === 'trendline' ? null : 'trendline'); setTempPoints([]) }}
           className={`p-1.5 rounded text-xs font-medium transition-colors ${
             activeTool === 'trendline'
               ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-t-text-secondary hover:bg-gray-100 dark:hover:bg-t-border/50'
           }`}
           title="추세선 Ctrl+T (2점)"
         >
@@ -931,7 +924,7 @@ export default function ChartDrawings({
           className={`p-1.5 rounded text-xs font-medium transition-colors ${
             activeTool === 'horizontal'
               ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-t-text-secondary hover:bg-gray-100 dark:hover:bg-t-border/50'
           }`}
           title="수평선 Ctrl+H (1점)"
         >
@@ -942,7 +935,7 @@ export default function ChartDrawings({
           className={`p-1.5 rounded text-xs font-medium transition-colors ${
             activeTool === 'channel'
               ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-t-text-secondary hover:bg-gray-100 dark:hover:bg-t-border/50'
           }`}
           title="채널 Ctrl+P (2점 + 드래그)"
         >
@@ -953,7 +946,7 @@ export default function ChartDrawings({
           className={`p-1.5 rounded text-xs font-medium transition-colors ${
             activeTool === 'fibonacci'
               ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-t-text-secondary hover:bg-gray-100 dark:hover:bg-t-border/50'
           }`}
           title="피보나치 Ctrl+F (2점)"
         >
@@ -961,7 +954,7 @@ export default function ChartDrawings({
         </button>
         {drawings.length > 0 && (
           <>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+            <div className="w-px h-4 bg-gray-300 dark:bg-t-border-hover mx-1" />
             <button
               onClick={handleClearAll}
               className="p-1.5 rounded text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -975,7 +968,7 @@ export default function ChartDrawings({
 
       {/* 선택된 드로잉 삭제 버튼 */}
       {selectedDrawing && !dragState && (
-        <div className="absolute top-12 right-2 z-30 bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 border dark:border-gray-700">
+        <div className="absolute top-12 right-2 z-30 bg-white dark:bg-t-bg-card rounded-lg shadow-md p-1 border dark:border-t-border">
           <button
             onClick={() => handleDelete(selectedDrawing)}
             className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"

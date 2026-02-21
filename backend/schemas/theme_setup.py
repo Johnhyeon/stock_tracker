@@ -34,7 +34,7 @@ class ScoreBreakdownMention(BaseModel):
     """언급 점수 상세."""
     score: float
     youtube_count: Optional[int] = None
-    trader_count: Optional[int] = None
+    expert_count: Optional[int] = None
 
 
 class ScoreBreakdownPrice(BaseModel):

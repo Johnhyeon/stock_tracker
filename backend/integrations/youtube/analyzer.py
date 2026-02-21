@@ -3,7 +3,7 @@ import re
 import logging
 from typing import Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from models import Stock
 
@@ -16,24 +16,37 @@ class StockMentionAnalyzer:
     제목과 설명에서 종목명/종목코드를 찾아 매칭합니다.
     """
 
-    def __init__(self, db: Session):
-        self.db = db
-        self._stock_cache: Optional[dict] = None
+    def __init__(self):
+        self._stock_cache: Optional[dict[str, str]] = None  # name -> code
+        self._stock_codes: Optional[set[str]] = None  # code set
+
+    async def load_stock_cache_async(self, db) -> None:
+        """비동기로 종목 캐시 로딩."""
+        result = await db.execute(select(Stock))
+        stocks = result.scalars().all()
+        self._stock_cache = {}
+        self._stock_codes = set()
+        for stock in stocks:
+            self._stock_cache[stock.name] = stock.code
+            self._stock_codes.add(stock.code)
+            # 종목명에서 "보통주", "우선주" 등 제거한 버전도 추가
+            clean_name = re.sub(r'(보통주|우선주|1우B|2우B|우B)$', '', stock.name).strip()
+            if clean_name != stock.name:
+                self._stock_cache[clean_name] = stock.code
 
     @property
     def stock_map(self) -> dict[str, str]:
         """종목명 -> 종목코드 매핑 캐시."""
         if self._stock_cache is None:
-            stocks = self.db.query(Stock).all()
-            self._stock_cache = {}
-            for stock in stocks:
-                # 종목명으로 매핑
-                self._stock_cache[stock.name] = stock.code
-                # 종목명에서 "보통주", "우선주" 등 제거한 버전도 추가
-                clean_name = re.sub(r'(보통주|우선주|1우B|2우B|우B)$', '', stock.name).strip()
-                if clean_name != stock.name:
-                    self._stock_cache[clean_name] = stock.code
+            raise RuntimeError("Stock cache not loaded. Call load_stock_cache_async() first.")
         return self._stock_cache
+
+    @property
+    def stock_codes(self) -> set[str]:
+        """종목코드 세트 캐시."""
+        if self._stock_codes is None:
+            raise RuntimeError("Stock cache not loaded. Call load_stock_cache_async() first.")
+        return self._stock_codes
 
     def extract_mentions(
         self,
@@ -57,8 +70,8 @@ class StockMentionAnalyzer:
         code_pattern = r'\b(\d{6})\b'
         for match in re.finditer(code_pattern, text):
             code = match.group(1)
-            # DB에 있는 종목코드인지 확인
-            if any(stock.code == code for stock in self.db.query(Stock).filter(Stock.code == code).limit(1)):
+            # 캐시된 코드 세트로 확인 (DB 조회 제거)
+            if code in self.stock_codes:
                 mentioned_codes.add(code)
                 # 주변 맥락 추출
                 start = max(0, match.start() - 20)

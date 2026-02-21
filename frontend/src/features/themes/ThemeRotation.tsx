@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { themeApi } from '../../services/api'
+import { useFeatureFlags } from '../../hooks/useFeatureFlags'
 import { Card } from '../../components/ui/Card'
 import type { ThemeRotationResponse, HotTheme } from '../../types/data'
 
@@ -30,6 +31,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function ThemeRotation() {
+  const features = useFeatureFlags()
   const [data, setData] = useState<ThemeRotationResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -88,14 +90,14 @@ export default function ThemeRotation() {
     if (score >= 60) return 'text-red-500'
     if (score >= 45) return 'text-orange-500'
     if (score >= 30) return 'text-yellow-600'
-    return 'text-gray-500'
+    return 'text-gray-500 dark:text-t-text-muted'
   }
 
   const getScoreBg = (score: number): string => {
-    if (score >= 60) return 'bg-red-50 border-red-200'
+    if (score >= 60) return 'bg-red-50 dark:bg-red-900/20 border-red-200'
     if (score >= 45) return 'bg-orange-50 border-orange-200'
-    if (score >= 30) return 'bg-yellow-50 border-yellow-200'
-    return 'bg-gray-50 border-gray-200'
+    if (score >= 30) return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200'
+    return 'bg-gray-50 dark:bg-t-bg-elevated border-gray-200 dark:border-t-border'
   }
 
   return (
@@ -104,8 +106,8 @@ export default function ThemeRotation() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Theme Rotation</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            테마별 순환매 분석 - YouTube & 트레이더 관심종목 기반
+          <p className="text-sm text-gray-500 dark:text-t-text-muted mt-1">
+            테마별 순환매 분석 - YouTube & 전문가 관심종목 기반
           </p>
           <Link
             to="/emerging"
@@ -118,7 +120,7 @@ export default function ThemeRotation() {
           <select
             value={daysBack}
             onChange={(e) => setDaysBack(Number(e.target.value))}
-            className="text-sm border rounded px-2 py-1"
+            className="text-sm border rounded px-2 py-1 bg-white dark:bg-t-bg-elevated dark:border-t-border-hover dark:text-t-text-primary"
           >
             <option value={3}>최근 3일</option>
             <option value={7}>최근 7일</option>
@@ -136,7 +138,7 @@ export default function ThemeRotation() {
 
       {/* 에러 */}
       {error && (
-        <Card className="p-4 bg-red-50 border-red-200">
+        <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200">
           <p className="text-sm text-red-700">{error}</p>
         </Card>
       )}
@@ -145,21 +147,21 @@ export default function ThemeRotation() {
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">감지된 테마</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">감지된 테마</p>
             <p className="text-2xl font-bold text-blue-600">{data.theme_count}개</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">1위 테마</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">1위 테마</p>
             <p className="text-lg font-bold text-red-600 truncate">
               {data.summary.top_theme || '-'}
             </p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">평균 점수</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">평균 점수</p>
             <p className="text-2xl font-bold">{data.summary.avg_theme_score.toFixed(1)}</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">분석 시간</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">분석 시간</p>
             <p className="text-sm font-medium">
               {new Date(data.analyzed_at).toLocaleTimeString('ko-KR', {
                 hour: '2-digit',
@@ -180,7 +182,7 @@ export default function ThemeRotation() {
               className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
                 activeCategory === cat
                   ? `${CATEGORY_COLORS[cat] || 'bg-blue-500'} text-white`
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
               }`}
             >
               {CATEGORY_LABELS[cat]}
@@ -196,8 +198,8 @@ export default function ThemeRotation() {
       {loading ? (
         <Card className="p-8 text-center">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/3 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/2 mx-auto"></div>
           </div>
         </Card>
       ) : data && getFilteredThemes().length > 0 ? (
@@ -216,11 +218,11 @@ export default function ThemeRotation() {
                   <span className="text-gray-400 font-medium">#{index + 1}</span>
                   <div>
                     <h3 className="font-semibold text-lg">{theme.theme_name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-t-text-muted mt-1">
                       <span>{theme.stock_count}개 종목</span>
                       <span>|</span>
                       <span>
-                        YouTube {theme.youtube_mentions}회 / 트레이더 {theme.trader_mentions}회
+                        YouTube {theme.youtube_mentions}회{features.expert ? ` / 전문가 ${theme.expert_mentions}회` : ''}
                       </span>
                     </div>
                   </div>
@@ -236,14 +238,14 @@ export default function ThemeRotation() {
               {/* 지표 요약 */}
               <div className="flex gap-4 mt-3 text-sm">
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-500">평균 등락:</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">평균 등락:</span>
                   <span
                     className={`font-medium ${
                       theme.avg_price_change > 0
                         ? 'text-red-500'
                         : theme.avg_price_change < 0
                         ? 'text-blue-500'
-                        : 'text-gray-500'
+                        : 'text-gray-500 dark:text-t-text-muted'
                     }`}
                   >
                     {theme.avg_price_change > 0 ? '+' : ''}
@@ -251,23 +253,23 @@ export default function ThemeRotation() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-500">총 거래량:</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">총 거래량:</span>
                   <span className="font-medium">{formatVolume(theme.total_volume)}</span>
                 </div>
               </div>
 
               {/* 확장된 종목 목록 */}
               {expandedTheme === theme.theme_name && theme.stocks.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-600 mb-2">관심 종목</h4>
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-t-border">
+                  <h4 className="text-sm font-medium text-gray-600 dark:text-t-text-muted mb-2">관심 종목</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                     {theme.stocks.map((stock) => (
                       <div
                         key={stock.code}
-                        className="p-2 bg-white rounded border border-gray-100 text-sm"
+                        className="p-2 bg-white dark:bg-t-bg-card rounded border border-gray-100 dark:border-t-border/50 text-sm"
                       >
                         <div className="font-medium truncate">{stock.name || stock.code}</div>
-                        <div className="text-xs text-gray-500">{stock.code}</div>
+                        <div className="text-xs text-gray-500 dark:text-t-text-muted">{stock.code}</div>
                         <div className="flex justify-between items-center mt-1 text-xs">
                           <span className="text-gray-400">
                             {stock.source === 'both' ? 'Y+T' : stock.source === 'youtube' ? 'Y' : 'T'}
@@ -279,7 +281,7 @@ export default function ThemeRotation() {
                                   ? 'text-red-500'
                                   : stock.price_change < 0
                                   ? 'text-blue-500'
-                                  : 'text-gray-500'
+                                  : 'text-gray-500 dark:text-t-text-muted'
                               }
                             >
                               {stock.price_change > 0 ? '+' : ''}
@@ -303,7 +305,7 @@ export default function ThemeRotation() {
           ))}
         </div>
       ) : (
-        <Card className="p-8 text-center text-gray-500">
+        <Card className="p-8 text-center text-gray-500 dark:text-t-text-muted">
           {activeCategory === 'all'
             ? '감지된 테마가 없습니다.'
             : `${CATEGORY_LABELS[activeCategory]} 카테고리에 테마가 없습니다.`}
@@ -312,11 +314,11 @@ export default function ThemeRotation() {
 
       {/* 범례 */}
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-600 mb-2">점수 산정 기준</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+        <h3 className="text-sm font-medium text-gray-600 dark:text-t-text-muted mb-2">점수 산정 기준</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500 dark:text-t-text-muted">
           <div>
             <span className="font-medium">언급 (40%)</span>
-            <p className="text-xs">YouTube + 트레이더 언급</p>
+            <p className="text-xs">YouTube + 전문가 언급</p>
           </div>
           <div>
             <span className="font-medium">종목 수 (20%)</span>

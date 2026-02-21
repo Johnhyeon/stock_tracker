@@ -67,22 +67,14 @@ export default function TelegramMonitor() {
   }, [])
 
   const handleAddChannel = async () => {
-    if (addForm.mode === 'link' && !addForm.link.trim()) {
-      return
-    }
-    if (addForm.mode === 'username' && !addForm.username.trim()) {
-      return
-    }
-    if (addForm.mode === 'manual' && (!addForm.channel_id || !addForm.channel_name.trim())) {
-      return
-    }
+    if (addForm.mode === 'link' && !addForm.link.trim()) return
+    if (addForm.mode === 'username' && !addForm.username.trim()) return
+    if (addForm.mode === 'manual' && (!addForm.channel_id || !addForm.channel_name.trim())) return
 
     setAddLoading(true)
     try {
       if (addForm.mode === 'link') {
-        await telegramMonitorApi.addChannel({
-          link: addForm.link.trim(),
-        })
+        await telegramMonitorApi.addChannel({ link: addForm.link.trim() })
       } else if (addForm.mode === 'username') {
         await telegramMonitorApi.addChannel({
           username: addForm.username.startsWith('@') ? addForm.username : `@${addForm.username}`,
@@ -112,7 +104,6 @@ export default function TelegramMonitor() {
 
   const handleDeleteChannel = async (channelId: number) => {
     if (!confirm('이 채널을 삭제하시겠습니까?')) return
-
     try {
       await telegramMonitorApi.deleteChannel(channelId)
       fetchData()
@@ -152,7 +143,7 @@ export default function TelegramMonitor() {
   if (loading) {
     return (
       <div className="text-center py-10">
-        <span className="text-gray-500">로딩 중...</span>
+        <span className="text-gray-500 dark:text-t-text-muted">로딩 중...</span>
       </div>
     )
   }
@@ -171,7 +162,7 @@ export default function TelegramMonitor() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">텔레그램 모니터링</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-t-text-primary">텔레그램 모니터링</h1>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={handleRunMonitor}>
             수동 실행
@@ -184,43 +175,43 @@ export default function TelegramMonitor() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">API 상태</div>
+            <div className="text-sm text-gray-500 dark:text-t-text-muted">API 상태</div>
             <div className="text-2xl font-bold">
               {status?.is_configured ? (
-                <span className="text-green-600">설정됨</span>
+                <span className="text-green-600 dark:text-green-400">설정됨</span>
               ) : (
-                <span className="text-red-600">미설정</span>
+                <span className="text-red-600 dark:text-red-400">미설정</span>
               )}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">활성 채널</div>
-            <div className="text-2xl font-bold">{status?.enabled_channels || 0}개</div>
+            <div className="text-sm text-gray-500 dark:text-t-text-muted">활성 채널</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-t-text-primary">{status?.enabled_channels || 0}개</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">모니터링 키워드</div>
-            <div className="text-2xl font-bold">{status?.active_keywords || 0}개</div>
+            <div className="text-sm text-gray-500 dark:text-t-text-muted">모니터링 키워드</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-t-text-primary">{status?.active_keywords || 0}개</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent>
-            <div className="text-sm text-gray-500">최근 7일 매칭</div>
-            <div className="text-2xl font-bold text-primary-600">{status?.recent_matches || 0}건</div>
+            <div className="text-sm text-gray-500 dark:text-t-text-muted">최근 7일 매칭</div>
+            <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{status?.recent_matches || 0}건</div>
           </CardContent>
         </Card>
       </div>
 
       {!status?.is_configured && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <p className="text-yellow-800 dark:text-yellow-300">
             <strong>설정 필요:</strong> 텔레그램 API가 설정되지 않았습니다.{' '}
-            <code className="bg-yellow-100 px-1 rounded">.env</code> 파일에{' '}
-            <code className="bg-yellow-100 px-1 rounded">TELEGRAM_API_ID</code>와{' '}
-            <code className="bg-yellow-100 px-1 rounded">TELEGRAM_API_HASH</code>를 설정해주세요.
+            <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 rounded">.env</code> 파일에{' '}
+            <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 rounded">TELEGRAM_API_ID</code>와{' '}
+            <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 rounded">TELEGRAM_API_HASH</code>를 설정해주세요.
           </p>
         </div>
       )}
@@ -229,23 +220,23 @@ export default function TelegramMonitor() {
         {/* 채널 목록 */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold">모니터링 채널</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-t-text-primary">모니터링 채널</h2>
           </CardHeader>
           <CardContent>
             {channels.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">등록된 채널이 없습니다.</p>
+              <p className="text-gray-500 dark:text-t-text-muted text-center py-4">등록된 채널이 없습니다.</p>
             ) : (
               <div className="space-y-3">
                 {channels.map((channel) => (
                   <div
                     key={channel.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-t-bg-elevated rounded-lg"
                   >
                     <div className="min-w-0 flex-1 mr-2">
-                      <div className="font-medium" style={{ wordBreak: 'break-all', maxWidth: '40ch' }}>
+                      <div className="font-medium text-gray-900 dark:text-t-text-primary" style={{ wordBreak: 'break-all', maxWidth: '40ch' }}>
                         {channel.channel_name}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-t-text-muted">
                         {channel.channel_username ? `@${channel.channel_username}` : `ID: ${channel.channel_id}`}
                       </div>
                     </div>
@@ -278,17 +269,17 @@ export default function TelegramMonitor() {
         {/* 모니터링 키워드 */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold">모니터링 키워드 (활성 아이디어 종목)</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-t-text-primary">모니터링 키워드 (활성 아이디어 종목)</h2>
           </CardHeader>
           <CardContent>
             {keywords.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">모니터링할 키워드가 없습니다.</p>
+              <p className="text-gray-500 dark:text-t-text-muted text-center py-4">모니터링할 키워드가 없습니다.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {keywords.map((keyword) => (
                   <span
                     key={keyword}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-sm"
                   >
                     {keyword}
                   </span>
@@ -302,43 +293,43 @@ export default function TelegramMonitor() {
       {/* 최근 매칭 기록 */}
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold">최근 매칭 기록</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-t-text-primary">최근 매칭 기록</h2>
         </CardHeader>
         <CardContent>
           {matches.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">최근 매칭 기록이 없습니다.</p>
+            <p className="text-gray-500 dark:text-t-text-muted text-center py-4">최근 매칭 기록이 없습니다.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-3">시간</th>
-                    <th className="text-left py-2 px-3">채널</th>
-                    <th className="text-left py-2 px-3">키워드</th>
-                    <th className="text-left py-2 px-3">내용</th>
-                    <th className="text-center py-2 px-3">알림</th>
+                  <tr className="border-b border-gray-200 dark:border-t-border">
+                    <th className="text-left py-2 px-3 text-gray-600 dark:text-t-text-muted">시간</th>
+                    <th className="text-left py-2 px-3 text-gray-600 dark:text-t-text-muted">채널</th>
+                    <th className="text-left py-2 px-3 text-gray-600 dark:text-t-text-muted">키워드</th>
+                    <th className="text-left py-2 px-3 text-gray-600 dark:text-t-text-muted">내용</th>
+                    <th className="text-center py-2 px-3 text-gray-600 dark:text-t-text-muted">알림</th>
                   </tr>
                 </thead>
                 <tbody>
                   {matches.map((match) => (
                     <tr
                       key={match.id}
-                      className="border-b hover:bg-gray-50 cursor-pointer"
+                      className="border-b border-gray-100 dark:border-t-border hover:bg-gray-50 dark:hover:bg-t-bg-elevated cursor-pointer"
                       onClick={() => setSelectedMatch(match)}
                     >
-                      <td className="py-2 px-3 text-gray-500">{formatDate(match.message_date)}</td>
-                      <td className="py-2 px-3">{match.channel_name}</td>
+                      <td className="py-2 px-3 text-gray-500 dark:text-t-text-muted">{formatDate(match.message_date)}</td>
+                      <td className="py-2 px-3 text-gray-900 dark:text-t-text-primary">{match.channel_name}</td>
                       <td className="py-2 px-3">
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded text-xs">
                           {match.matched_keyword}
                         </span>
                       </td>
-                      <td className="py-2 px-3 max-w-xs truncate">{match.message_text}</td>
+                      <td className="py-2 px-3 max-w-xs truncate text-gray-700 dark:text-t-text-secondary">{match.message_text}</td>
                       <td className="py-2 px-3 text-center">
                         {match.notification_sent ? (
-                          <span className="text-green-600">발송됨</span>
+                          <span className="text-green-600 dark:text-green-400">발송됨</span>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-400 dark:text-t-text-muted">-</span>
                         )}
                       </td>
                     </tr>
@@ -354,36 +345,19 @@ export default function TelegramMonitor() {
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="채널 추가">
         <div className="space-y-4">
           <div className="flex gap-1">
-            <button
-              className={`flex-1 py-2 px-2 rounded-lg text-sm ${
-                addForm.mode === 'link'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-              onClick={() => setAddForm({ ...addForm, mode: 'link' })}
-            >
-              링크
-            </button>
-            <button
-              className={`flex-1 py-2 px-2 rounded-lg text-sm ${
-                addForm.mode === 'username'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-              onClick={() => setAddForm({ ...addForm, mode: 'username' })}
-            >
-              @username
-            </button>
-            <button
-              className={`flex-1 py-2 px-2 rounded-lg text-sm ${
-                addForm.mode === 'manual'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-              onClick={() => setAddForm({ ...addForm, mode: 'manual' })}
-            >
-              직접 입력
-            </button>
+            {(['link', 'username', 'manual'] as const).map((mode) => (
+              <button
+                key={mode}
+                className={`flex-1 py-2 px-2 rounded-lg text-sm transition-colors ${
+                  addForm.mode === mode
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-700 dark:text-t-text-secondary hover:bg-gray-200 dark:hover:bg-t-border'
+                }`}
+                onClick={() => setAddForm({ ...addForm, mode })}
+              >
+                {mode === 'link' ? '링크' : mode === 'username' ? '@username' : '직접 입력'}
+              </button>
+            ))}
           </div>
 
           {addForm.mode === 'link' ? (
@@ -438,22 +412,22 @@ export default function TelegramMonitor() {
         {selectedMatch && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm text-gray-500">채널</div>
-              <div className="font-medium">{selectedMatch.channel_name}</div>
+              <div className="text-sm text-gray-500 dark:text-t-text-muted">채널</div>
+              <div className="font-medium text-gray-900 dark:text-t-text-primary">{selectedMatch.channel_name}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-500">시간</div>
-              <div>{new Date(selectedMatch.message_date).toLocaleString('ko-KR')}</div>
+              <div className="text-sm text-gray-500 dark:text-t-text-muted">시간</div>
+              <div className="text-gray-900 dark:text-t-text-primary">{new Date(selectedMatch.message_date).toLocaleString('ko-KR')}</div>
             </div>
             <div>
-              <div className="text-sm text-gray-500">매칭 키워드</div>
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+              <div className="text-sm text-gray-500 dark:text-t-text-muted">매칭 키워드</div>
+              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded">
                 {selectedMatch.matched_keyword}
               </span>
             </div>
             <div>
-              <div className="text-sm text-gray-500 mb-1">메시지 내용</div>
-              <div className="p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">
+              <div className="text-sm text-gray-500 dark:text-t-text-muted mb-1">메시지 내용</div>
+              <div className="p-3 bg-gray-50 dark:bg-t-bg-elevated rounded-lg text-sm text-gray-700 dark:text-t-text-secondary whitespace-pre-wrap">
                 {selectedMatch.message_text}
               </div>
             </div>

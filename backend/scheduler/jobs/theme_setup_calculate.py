@@ -1,13 +1,15 @@
 """테마 셋업 점수 계산 작업."""
 import logging
-from datetime import datetime
 
 from core.database import async_session_maker
+from core.timezone import now_kst
 from services.theme_setup_service import ThemeSetupService
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("theme_setup_calculate")
 async def calculate_theme_setups() -> dict:
     """테마 셋업 종합 점수 계산 작업.
 
@@ -21,7 +23,7 @@ async def calculate_theme_setups() -> dict:
     result = {
         "calculated_count": 0,
         "emerging_count": 0,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
     }
 
     async with async_session_maker() as db:

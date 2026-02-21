@@ -1,13 +1,15 @@
 """차트 패턴 분석 작업."""
 import logging
-from datetime import datetime
 
 from core.database import async_session_maker
+from core.timezone import now_kst
 from services.chart_pattern_service import ChartPatternService
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("chart_pattern_analyze")
 async def analyze_chart_patterns() -> dict:
     """차트 패턴 분석 작업.
 
@@ -20,7 +22,7 @@ async def analyze_chart_patterns() -> dict:
     result = {
         "analyzed_themes": 0,
         "stocks_with_pattern": 0,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
     }
 
     async with async_session_maker() as db:

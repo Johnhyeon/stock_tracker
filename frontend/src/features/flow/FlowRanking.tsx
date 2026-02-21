@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { Fragment, useEffect, useState, useRef, useCallback } from 'react'
 import { flowRankingApi, themeSetupApi, FlowRankingStock, ConsecutiveStock, SpikeStock, RealtimeSpikeStock } from '../../services/api'
 import { Card } from '../../components/ui/Card'
 import { StockChart } from '../../components/StockChart'
@@ -172,14 +172,14 @@ export default function FlowRanking() {
         <div>
           <h1 className="text-2xl font-bold">수급 랭킹</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">
               외국인/기관 순매수 상위 종목
             </p>
             {activeTab === 'spike' && spikeMode === 'realtime' && (
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                 marketStatus === 'open'
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
+                  : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted'
               }`}>
                 {marketStatus === 'open' ? '🟢 장중' : '⚪ 장마감'}
               </span>
@@ -196,7 +196,7 @@ export default function FlowRanking() {
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                     spikeMode === 'realtime'
                       ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
                   }`}
                 >
                   실시간
@@ -206,7 +206,7 @@ export default function FlowRanking() {
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                     spikeMode === 'history'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
                   }`}
                 >
                   히스토리
@@ -226,7 +226,7 @@ export default function FlowRanking() {
               <select
                 value={minRatio}
                 onChange={(e) => setMinRatio(Number(e.target.value))}
-                className="text-sm border rounded px-2 py-1"
+                className="text-sm border rounded px-2 py-1 bg-white dark:bg-t-bg-elevated dark:border-t-border-hover dark:text-t-text-primary"
               >
                 <option value={2}>2배 이상</option>
                 <option value={3}>3배 이상</option>
@@ -239,7 +239,7 @@ export default function FlowRanking() {
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="text-sm border rounded px-2 py-1"
+              className="text-sm border rounded px-2 py-1 bg-white dark:bg-t-bg-elevated dark:border-t-border-hover dark:text-t-text-primary"
               disabled={activeTab === 'consecutive'}
             >
               <option value={1}>당일</option>
@@ -252,7 +252,7 @@ export default function FlowRanking() {
           <select
             value={investorType}
             onChange={(e) => setInvestorType(e.target.value as InvestorType)}
-            className="text-sm border rounded px-2 py-1"
+            className="text-sm border rounded px-2 py-1 bg-white dark:bg-t-bg-elevated dark:border-t-border-hover dark:text-t-text-primary"
           >
             <option value="all">외인+기관</option>
             <option value="foreign">외국인</option>
@@ -263,13 +263,13 @@ export default function FlowRanking() {
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-gray-200 dark:border-t-border">
         <button
           onClick={() => setActiveTab('top')}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'top'
               ? 'border-red-500 text-red-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary'
           }`}
         >
           순매수 상위
@@ -279,7 +279,7 @@ export default function FlowRanking() {
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'bottom'
               ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary'
           }`}
         >
           순매도 상위
@@ -289,7 +289,7 @@ export default function FlowRanking() {
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'consecutive'
               ? 'border-green-500 text-green-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary'
           }`}
         >
           연속 순매수
@@ -299,7 +299,7 @@ export default function FlowRanking() {
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === 'spike'
               ? 'border-orange-500 text-orange-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary'
           }`}
         >
           🔥 급증
@@ -308,7 +308,7 @@ export default function FlowRanking() {
 
       {/* 에러 */}
       {error && (
-        <Card className="p-4 bg-red-50 border-red-200">
+        <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200">
           <p className="text-sm text-red-700">{error}</p>
         </Card>
       )}
@@ -317,8 +317,8 @@ export default function FlowRanking() {
       {loading ? (
         <Card className="p-8 text-center">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/3 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/2 mx-auto"></div>
           </div>
         </Card>
       ) : activeTab === 'spike' ? (
@@ -328,24 +328,23 @@ export default function FlowRanking() {
             {spikeMode === 'realtime' ? (
               // 실시간 모드 테이블
               <table className="w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-t-bg-elevated">
                   <tr>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">종목</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">급증 배율</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">당일 순매수</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">일평균</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">외국인</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">기관</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">테마</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">#</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">종목</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">급증 배율</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">당일 순매수</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">일평균</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">기관</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">테마</th>
                   </tr>
                 </thead>
                 <tbody>
                   {realtimeSpikeStocks.map((stock, idx) => (
-                    <>
+                    <Fragment key={stock.stock_code}>
                       <tr
-                        key={stock.stock_code}
-                        className={`border-t hover:bg-gray-50 cursor-pointer ${
+                        className={`border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated cursor-pointer ${
                           selectedStock === stock.stock_code ? 'bg-green-50' : ''
                         }`}
                         onClick={() => handleStockClick(stock.stock_code)}
@@ -374,7 +373,7 @@ export default function FlowRanking() {
                         <td className={`py-3 px-4 text-right font-bold ${stock.today_amount >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
                           {formatAmount(stock.today_amount)}
                         </td>
-                        <td className="py-3 px-4 text-right text-gray-500">
+                        <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                           {formatAmount(stock.daily_avg)}
                         </td>
                         <td className={`py-3 px-4 text-right font-medium ${stock.foreign_amount >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
@@ -386,7 +385,7 @@ export default function FlowRanking() {
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {stock.themes.slice(0, 2).map((theme) => (
-                              <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                              <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted rounded">
                                 {theme}
                               </span>
                             ))}
@@ -398,8 +397,8 @@ export default function FlowRanking() {
                       </tr>
                       {/* 차트 & 수급 상세 */}
                       {selectedStock === stock.stock_code && (
-                        <tr key={`${stock.stock_code}-detail`}>
-                          <td colSpan={8} className="bg-gray-50 p-4">
+                        <tr>
+                          <td colSpan={8} className="bg-gray-50 dark:bg-t-bg-elevated p-4">
                             <StockDetailPanel
                               stockCode={stock.stock_code}
                               stockName={stock.stock_name}
@@ -409,31 +408,30 @@ export default function FlowRanking() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
             ) : (
               // 히스토리 모드 테이블
               <table className="w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-t-bg-elevated">
                   <tr>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">종목</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">급증 배율</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">최근 2일</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">일평균</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">외국인</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">기관</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">테마</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">#</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">종목</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">급증 배율</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">최근 2일</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">일평균</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">기관</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">테마</th>
                   </tr>
                 </thead>
                 <tbody>
                   {spikeStocks.map((stock, idx) => (
-                    <>
+                    <Fragment key={stock.stock_code}>
                       <tr
-                        key={stock.stock_code}
-                        className={`border-t hover:bg-gray-50 cursor-pointer ${
+                        className={`border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated cursor-pointer ${
                           selectedStock === stock.stock_code ? 'bg-orange-50' : ''
                         }`}
                         onClick={() => handleStockClick(stock.stock_code)}
@@ -462,7 +460,7 @@ export default function FlowRanking() {
                         <td className={`py-3 px-4 text-right font-medium ${stock.recent_amount >= 0 ? 'text-red-600' : 'text-blue-600'}`}>
                           {formatAmount(stock.recent_amount)}
                         </td>
-                        <td className="py-3 px-4 text-right text-gray-500">
+                        <td className="py-3 px-4 text-right text-gray-500 dark:text-t-text-muted">
                           {formatAmount(stock.base_avg)}
                         </td>
                         <td className={`py-3 px-4 text-right font-medium ${stock.foreign_amount_sum >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
@@ -474,7 +472,7 @@ export default function FlowRanking() {
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {stock.themes.slice(0, 2).map((theme) => (
-                              <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                              <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted rounded">
                                 {theme}
                               </span>
                             ))}
@@ -486,8 +484,8 @@ export default function FlowRanking() {
                       </tr>
                       {/* 차트 & 수급 상세 */}
                       {selectedStock === stock.stock_code && (
-                        <tr key={`${stock.stock_code}-detail`}>
-                          <td colSpan={8} className="bg-gray-50 p-4">
+                        <tr>
+                          <td colSpan={8} className="bg-gray-50 dark:bg-t-bg-elevated p-4">
                             <StockDetailPanel
                               stockCode={stock.stock_code}
                               stockName={stock.stock_name}
@@ -497,20 +495,20 @@ export default function FlowRanking() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
             )}
           </div>
           {spikeMode === 'realtime' && realtimeSpikeStocks.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-t-text-muted">
               조건에 맞는 종목이 없습니다. (최소 {minRatio}배 이상, 5억원 이상)
               <p className="text-xs mt-2">장중에는 KIS API를 통해 실시간 수급 데이터가 조회됩니다.</p>
             </div>
           )}
           {spikeMode === 'history' && spikeStocks.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-t-text-muted">
               조건에 맞는 종목이 없습니다. (최소 {minRatio}배 이상, 10억원 이상)
             </div>
           )}
@@ -520,24 +518,23 @@ export default function FlowRanking() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-t-bg-elevated">
                 <tr>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">종목</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">연속일</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">외국인</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">기관</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">개인</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">테마</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">#</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">종목</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">연속일</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">기관</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">개인</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">테마</th>
                 </tr>
               </thead>
               <tbody>
                 {consecutiveStocks.map((stock, idx) => (
-                  <>
+                  <Fragment key={stock.stock_code}>
                     <tr
-                      key={stock.stock_code}
-                      className={`border-t hover:bg-gray-50 cursor-pointer ${
-                        selectedStock === stock.stock_code ? 'bg-blue-50' : ''
+                      className={`border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated cursor-pointer ${
+                        selectedStock === stock.stock_code ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                       }`}
                       onClick={() => handleStockClick(stock.stock_code)}
                     >
@@ -570,7 +567,7 @@ export default function FlowRanking() {
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           {stock.themes.slice(0, 2).map((theme) => (
-                            <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted rounded">
                               {theme}
                             </span>
                           ))}
@@ -582,8 +579,8 @@ export default function FlowRanking() {
                     </tr>
                     {/* 차트 & 수급 상세 */}
                     {selectedStock === stock.stock_code && (
-                      <tr key={`${stock.stock_code}-detail`}>
-                        <td colSpan={7} className="bg-gray-50 p-4">
+                      <tr>
+                        <td colSpan={7} className="bg-gray-50 dark:bg-t-bg-elevated p-4">
                           <StockDetailPanel
                             stockCode={stock.stock_code}
                             stockName={stock.stock_name}
@@ -593,13 +590,13 @@ export default function FlowRanking() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
           {consecutiveStocks.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-t-text-muted">
               조건에 맞는 종목이 없습니다.
             </div>
           )}
@@ -609,25 +606,24 @@ export default function FlowRanking() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-t-bg-elevated">
                 <tr>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">종목</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">외국인</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">기관</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">개인</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">합계</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">점수</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">테마</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">#</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">종목</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">기관</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">개인</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">합계</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">점수</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-t-text-muted">테마</th>
                 </tr>
               </thead>
               <tbody>
                 {currentStocks.map((stock, idx) => (
-                  <>
+                  <Fragment key={stock.stock_code}>
                     <tr
-                      key={stock.stock_code}
-                      className={`border-t hover:bg-gray-50 cursor-pointer ${
-                        selectedStock === stock.stock_code ? 'bg-blue-50' : ''
+                      className={`border-t hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated cursor-pointer ${
+                        selectedStock === stock.stock_code ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                       }`}
                       onClick={() => handleStockClick(stock.stock_code)}
                     >
@@ -659,7 +655,7 @@ export default function FlowRanking() {
                         <span className={`inline-block px-2 py-0.5 rounded text-xs ${
                           stock.avg_score >= 60 ? 'bg-red-100 text-red-700' :
                           stock.avg_score >= 50 ? 'bg-orange-100 text-orange-700' :
-                          stock.avg_score >= 40 ? 'bg-gray-100 text-gray-700' :
+                          stock.avg_score >= 40 ? 'bg-gray-100 dark:bg-t-bg-elevated text-gray-700 dark:text-t-text-secondary' :
                           'bg-blue-100 text-blue-700'
                         }`}>
                           {stock.avg_score.toFixed(0)}
@@ -668,7 +664,7 @@ export default function FlowRanking() {
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           {stock.themes.slice(0, 2).map((theme) => (
-                            <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            <span key={theme} className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted rounded">
                               {theme}
                             </span>
                           ))}
@@ -680,8 +676,8 @@ export default function FlowRanking() {
                     </tr>
                     {/* 차트 & 수급 상세 */}
                     {selectedStock === stock.stock_code && (
-                      <tr key={`${stock.stock_code}-detail`}>
-                        <td colSpan={8} className="bg-gray-50 p-4">
+                      <tr>
+                        <td colSpan={8} className="bg-gray-50 dark:bg-t-bg-elevated p-4">
                           <StockDetailPanel
                             stockCode={stock.stock_code}
                             stockName={stock.stock_name}
@@ -691,13 +687,13 @@ export default function FlowRanking() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
           {currentStocks.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-t-text-muted">
               조건에 맞는 종목이 없습니다.
             </div>
           )}
@@ -705,8 +701,8 @@ export default function FlowRanking() {
       )}
 
       {/* 범례 */}
-      <Card className="p-3 bg-gray-50">
-        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+      <Card className="p-3 bg-gray-50 dark:bg-t-bg-elevated">
+        <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-t-text-muted">
           <span><span className="text-red-500 font-medium">빨간색</span>: 순매수</span>
           <span><span className="text-blue-500 font-medium">파란색</span>: 순매도</span>
           <span>점수 50 이상: 매수 우위</span>
@@ -733,7 +729,7 @@ function StockDetailPanel({ stockCode, stockName, flowHistory, flowLoading }: St
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* 차트 */}
-      <div className="bg-white rounded-lg p-3 border">
+      <div className="bg-white dark:bg-t-bg-card rounded-lg p-3 border">
         <StockChart
           stockCode={stockCode}
           stockName={stockName}
@@ -743,14 +739,14 @@ function StockDetailPanel({ stockCode, stockName, flowHistory, flowLoading }: St
       </div>
 
       {/* 수급 내역 */}
-      <div className="bg-white rounded-lg p-3 border">
-        <h4 className="text-sm font-medium text-gray-600 mb-3">최근 20일 수급</h4>
+      <div className="bg-white dark:bg-t-bg-card rounded-lg p-3 border">
+        <h4 className="text-sm font-medium text-gray-600 dark:text-t-text-muted mb-3">최근 20일 수급</h4>
         {flowLoading ? (
           <div className="text-center text-gray-400 py-4">로딩 중...</div>
         ) : flowHistory.length > 0 ? (
           <div className="max-h-64 overflow-y-auto">
             <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-white">
+              <thead className="sticky top-0 bg-white dark:bg-t-bg-card">
                 <tr className="border-b">
                   <th className="text-left py-1.5 px-2">날짜</th>
                   <th className="text-right py-1.5 px-2">외국인</th>
@@ -763,8 +759,8 @@ function StockDetailPanel({ stockCode, stockName, flowHistory, flowLoading }: St
                 {flowHistory.map((h) => {
                   const total = h.foreign_net + h.institution_net
                   return (
-                    <tr key={h.flow_date} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-1.5 px-2 text-gray-600">{h.flow_date}</td>
+                    <tr key={h.flow_date} className="border-b border-gray-100 dark:border-t-border/50 hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated">
+                      <td className="py-1.5 px-2 text-gray-600 dark:text-t-text-muted">{h.flow_date}</td>
                       <td className={`py-1.5 px-2 text-right ${h.foreign_net >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                         {formatQty(h.foreign_net)}
                       </td>
@@ -791,7 +787,7 @@ function StockDetailPanel({ stockCode, stockName, flowHistory, flowLoading }: St
         {flowHistory.length > 0 && (
           <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-2 text-xs">
             <div className="text-center">
-              <div className="text-gray-500">5일 합계</div>
+              <div className="text-gray-500 dark:text-t-text-muted">5일 합계</div>
               <div className={`font-medium ${
                 flowHistory.slice(0, 5).reduce((sum, h) => sum + h.foreign_net + h.institution_net, 0) >= 0
                   ? 'text-red-600' : 'text-blue-600'
@@ -800,7 +796,7 @@ function StockDetailPanel({ stockCode, stockName, flowHistory, flowLoading }: St
               </div>
             </div>
             <div className="text-center">
-              <div className="text-gray-500">10일 합계</div>
+              <div className="text-gray-500 dark:text-t-text-muted">10일 합계</div>
               <div className={`font-medium ${
                 flowHistory.slice(0, 10).reduce((sum, h) => sum + h.foreign_net + h.institution_net, 0) >= 0
                   ? 'text-red-600' : 'text-blue-600'
@@ -809,7 +805,7 @@ function StockDetailPanel({ stockCode, stockName, flowHistory, flowLoading }: St
               </div>
             </div>
             <div className="text-center">
-              <div className="text-gray-500">20일 합계</div>
+              <div className="text-gray-500 dark:text-t-text-muted">20일 합계</div>
               <div className={`font-medium ${
                 flowHistory.reduce((sum, h) => sum + h.foreign_net + h.institution_net, 0) >= 0
                   ? 'text-red-600' : 'text-blue-600'

@@ -17,10 +17,10 @@ function formatAmount(value: number | null): string {
 
 // 등락률 색상
 function getChangeColor(value: number | null): string {
-  if (value === null) return 'text-gray-500'
+  if (value === null) return 'text-gray-500 dark:text-t-text-muted'
   if (value > 0) return 'text-red-600'
   if (value < 0) return 'text-blue-600'
-  return 'text-gray-500'
+  return 'text-gray-500 dark:text-t-text-muted'
 }
 
 // 미니 차트 컴포넌트
@@ -226,22 +226,22 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white dark:bg-t-bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 dark:bg-t-bg-elevated">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{themeName}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-t-text-primary">{themeName}</h2>
             {data && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-t-text-muted">
                 {data.etf.name} ({data.etf.code})
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-t-text-muted dark:text-t-text-muted text-2xl leading-none"
           >
             &times;
           </button>
@@ -256,7 +256,7 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-4 text-red-700">
               {error}
             </div>
           )}
@@ -264,14 +264,14 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
           {data && (
             <>
               {/* ETF 성과 요약 */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-700 mb-3">ETF 성과 요약</h3>
+              <div className="bg-gray-50 dark:bg-t-bg-elevated rounded-lg p-4">
+                <h3 className="font-semibold text-gray-700 dark:text-t-text-secondary mb-3">ETF 성과 요약</h3>
                 <div className="grid grid-cols-4 gap-3">
                   {(['1d', '5d', '20d', '60d'] as const).map((period) => {
                     const value = data.etf.changes[period]
                     return (
-                      <div key={period} className="bg-white rounded-lg p-3 text-center border">
-                        <div className="text-xs text-gray-500 mb-1">
+                      <div key={period} className="bg-white dark:bg-t-bg-card rounded-lg p-3 text-center border">
+                        <div className="text-xs text-gray-500 dark:text-t-text-muted mb-1">
                           {period === '1d' ? '1일' : period === '5d' ? '5일' : period === '20d' ? '20일' : '60일'}
                         </div>
                         <div className={`text-lg font-bold ${getChangeColor(value)}`}>
@@ -284,7 +284,7 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
 
                 {/* 거래대금 */}
                 <div className="mt-4 flex items-center gap-4 text-sm">
-                  <span className="text-gray-600">거래대금:</span>
+                  <span className="text-gray-600 dark:text-t-text-muted">거래대금:</span>
                   <span className="font-medium">{formatAmount(data.etf.trading_value)}</span>
                   {data.etf.trading_value_ratio && (
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -292,7 +292,7 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
                         ? 'bg-orange-100 text-orange-700'
                         : data.etf.trading_value_ratio <= 0.5
                           ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-700'
+                          : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-700 dark:text-t-text-secondary'
                     }`}>
                       평균 대비 {data.etf.trading_value_ratio.toFixed(1)}배
                     </span>
@@ -301,8 +301,8 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
               </div>
 
               {/* 미니 차트 */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-700 mb-3">60일 차트</h3>
+              <div className="bg-gray-50 dark:bg-t-bg-elevated rounded-lg p-4">
+                <h3 className="font-semibold text-gray-700 dark:text-t-text-secondary mb-3">60일 차트</h3>
                 <MiniChart data={data.chart} />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
                   <span>{data.chart[0]?.trade_date}</span>
@@ -313,7 +313,7 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
               {/* 구성 종목 */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-700">구성 종목 TOP 15</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-t-text-secondary">구성 종목 TOP 15</h3>
                   {!showHoldings && (
                     <button
                       onClick={loadHoldings}
@@ -328,17 +328,17 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
                 {showHoldings && holdings.length > 0 && (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
-                      <thead className="bg-gray-100">
+                      <thead className="bg-gray-100 dark:bg-t-bg-elevated">
                         <tr>
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-600">종목</th>
-                          <th className="px-2 py-1.5 text-right font-medium text-gray-600">5일</th>
-                          <th className="px-2 py-1.5 text-right font-medium text-gray-600">외국인</th>
-                          <th className="px-2 py-1.5 text-right font-medium text-gray-600">기관</th>
+                          <th className="px-2 py-1.5 text-left font-medium text-gray-600 dark:text-t-text-muted">종목</th>
+                          <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-t-text-muted">5일</th>
+                          <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-t-text-muted">외국인</th>
+                          <th className="px-2 py-1.5 text-right font-medium text-gray-600 dark:text-t-text-muted">기관</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-gray-100 dark:divide-t-border/50">
                         {holdings.map((h, idx) => (
-                          <tr key={h.stock_code} className={h.in_my_ideas ? 'bg-yellow-50' : ''}>
+                          <tr key={h.stock_code} className={h.in_my_ideas ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
                             <td className="px-2 py-1.5">
                               <div className="flex items-center gap-1">
                                 <span className="text-gray-400 text-xs w-4">{idx + 1}</span>
@@ -350,10 +350,10 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
                             <td className={`px-2 py-1.5 text-right font-medium ${getChangeColor(h.change_5d)}`}>
                               {h.change_5d !== null ? `${h.change_5d > 0 ? '+' : ''}${h.change_5d.toFixed(1)}%` : '-'}
                             </td>
-                            <td className={`px-2 py-1.5 text-right ${h.foreign_net && h.foreign_net > 0 ? 'text-red-600' : h.foreign_net && h.foreign_net < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                            <td className={`px-2 py-1.5 text-right ${h.foreign_net && h.foreign_net > 0 ? 'text-red-600' : h.foreign_net && h.foreign_net < 0 ? 'text-blue-600' : 'text-gray-500 dark:text-t-text-muted'}`}>
                               {h.foreign_net !== null ? `${h.foreign_net > 0 ? '+' : ''}${(h.foreign_net / 100000000).toFixed(0)}억` : '-'}
                             </td>
-                            <td className={`px-2 py-1.5 text-right ${h.inst_net && h.inst_net > 0 ? 'text-red-600' : h.inst_net && h.inst_net < 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                            <td className={`px-2 py-1.5 text-right ${h.inst_net && h.inst_net > 0 ? 'text-red-600' : h.inst_net && h.inst_net < 0 ? 'text-blue-600' : 'text-gray-500 dark:text-t-text-muted'}`}>
                               {h.inst_net !== null ? `${h.inst_net > 0 ? '+' : ''}${(h.inst_net / 100000000).toFixed(0)}억` : '-'}
                             </td>
                           </tr>
@@ -372,12 +372,12 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
               {/* 연관 테마 */}
               {data.related_themes.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">연관 테마</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-t-text-secondary mb-3">연관 테마</h3>
                   <div className="flex flex-wrap gap-2">
                     {data.related_themes.map((theme) => (
                       <div
                         key={theme.name}
-                        className="px-3 py-2 bg-gray-100 rounded-lg text-sm"
+                        className="px-3 py-2 bg-gray-100 dark:bg-t-bg-elevated rounded-lg text-sm"
                       >
                         <span className="font-medium">{theme.name}</span>
                         {theme.change_5d !== null && (
@@ -394,12 +394,12 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
               {/* 테마 내 모든 ETF */}
               {data.all_etfs.length > 1 && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">테마 내 ETF</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-t-text-secondary mb-3">테마 내 ETF</h3>
                   <div className="space-y-2">
                     {data.all_etfs.map((etf) => (
                       <div
                         key={etf.etf_code}
-                        className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg text-sm"
+                        className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-t-bg-elevated rounded-lg text-sm"
                       >
                         <div>
                           <span className="font-medium">{etf.etf_name}</span>
@@ -420,7 +420,7 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
               {/* 뉴스 */}
               {data.news.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">최근 뉴스</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-t-text-secondary mb-3">최근 뉴스</h3>
                   <div className="space-y-2">
                     {data.news.slice(0, 5).map((news, idx) => (
                       <a
@@ -428,14 +428,14 @@ export default function ThemeDetailModal({ themeName, onClose }: ThemeDetailModa
                         href={news.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block px-3 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="block px-3 py-2 bg-gray-50 dark:bg-t-bg-elevated rounded-lg hover:bg-gray-100 dark:hover:bg-t-bg-elevated dark:bg-t-bg-elevated transition-colors"
                       >
                         <div className="flex items-start gap-2">
                           {news.is_quality && (
                             <span className="text-yellow-500 flex-shrink-0">★</span>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 line-clamp-2">{news.title}</p>
+                            <p className="text-sm text-gray-900 dark:text-t-text-primary line-clamp-2">{news.title}</p>
                             <p className="text-xs text-gray-400 mt-1">
                               {news.source && <span>{news.source} · </span>}
                               {news.published_at && new Date(news.published_at).toLocaleDateString('ko-KR')}

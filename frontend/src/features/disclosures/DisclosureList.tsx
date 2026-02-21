@@ -110,7 +110,7 @@ export default function DisclosureList() {
               importance: e.target.value as DisclosureImportance | undefined,
             })
           }
-          className="text-sm border rounded px-2 py-1"
+          className="text-sm border rounded px-2 py-1 bg-white dark:bg-t-bg-elevated dark:border-t-border-hover dark:text-t-text-primary"
         >
           <option value="">전체 중요도</option>
           <option value="high">중요</option>
@@ -121,17 +121,17 @@ export default function DisclosureList() {
 
       {/* 공시 목록 */}
       {disclosuresLoading ? (
-        <p className="text-gray-500">로딩 중...</p>
+        <p className="text-gray-500 dark:text-t-text-muted">로딩 중...</p>
       ) : disclosures.length === 0 ? (
         <Card className="p-6">
-          <p className="text-gray-500 text-center py-8">공시가 없습니다.</p>
+          <p className="text-gray-500 dark:text-t-text-muted text-center py-8">공시가 없습니다.</p>
         </Card>
       ) : (
         <div className="space-y-2">
           {disclosures.map((disclosure) => (
             <Card
               key={disclosure.id}
-              className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+              className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 dark:bg-t-bg-elevated transition-colors ${
                 !disclosure.is_read ? 'border-l-4 border-l-blue-500' : ''
               }`}
               onClick={() => {
@@ -149,15 +149,15 @@ export default function DisclosureList() {
                     {getImportanceBadge(disclosure.importance)}
                     <span className="font-medium">{disclosure.corp_name}</span>
                     {disclosure.stock_code && (
-                      <span className="text-sm text-gray-500">({disclosure.stock_code})</span>
+                      <span className="text-sm text-gray-500 dark:text-t-text-muted">({disclosure.stock_code})</span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-700">{disclosure.report_nm}</p>
+                  <p className="text-sm text-gray-700 dark:text-t-text-secondary">{disclosure.report_nm}</p>
                   {disclosure.summary && (
-                    <p className="text-xs text-gray-500 mt-1">{disclosure.summary}</p>
+                    <p className="text-xs text-gray-500 dark:text-t-text-muted mt-1">{disclosure.summary}</p>
                   )}
                 </div>
-                <div className="text-right text-sm text-gray-500">
+                <div className="text-right text-sm text-gray-500 dark:text-t-text-muted">
                   <p>{formatDate(disclosure.rcept_dt)}</p>
                 </div>
               </div>

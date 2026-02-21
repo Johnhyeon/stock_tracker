@@ -42,9 +42,9 @@ export default function Analysis() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">복기 & 분석</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-t-text-primary mb-6">복기 & 분석</h1>
 
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 dark:border-t-border mb-6">
         <nav className="flex space-x-8">
           {tabs.map((tab) => (
             <button
@@ -53,7 +53,7 @@ export default function Analysis() {
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary hover:border-gray-300 dark:hover:border-t-border-hover'
               }`}
             >
               {tab.label}
@@ -67,7 +67,7 @@ export default function Analysis() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardContent>
-                <div className="text-sm text-gray-500">평균 시간차</div>
+                <div className="text-sm text-gray-500 dark:text-t-text-muted">평균 시간차</div>
                 <div className="text-2xl font-bold">
                   {timeline.avg_time_diff > 0 ? '+' : ''}
                   {timeline.avg_time_diff.toFixed(1)}일
@@ -76,19 +76,19 @@ export default function Analysis() {
             </Card>
             <Card>
               <CardContent>
-                <div className="text-sm text-gray-500">조기 청산</div>
+                <div className="text-sm text-gray-500 dark:text-t-text-muted">조기 청산</div>
                 <div className="text-2xl font-bold text-yellow-600">{timeline.early_exits}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <div className="text-sm text-gray-500">적정 청산</div>
+                <div className="text-sm text-gray-500 dark:text-t-text-muted">적정 청산</div>
                 <div className="text-2xl font-bold text-green-600">{timeline.on_time_exits}</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent>
-                <div className="text-sm text-gray-500">지연 청산</div>
+                <div className="text-sm text-gray-500 dark:text-t-text-muted">지연 청산</div>
                 <div className="text-2xl font-bold text-red-600">{timeline.late_exits}</div>
               </CardContent>
             </Card>
@@ -100,36 +100,36 @@ export default function Analysis() {
             </CardHeader>
             <CardContent>
               {timeline.entries.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">청산 이력이 없습니다.</p>
+                <p className="text-gray-500 dark:text-t-text-muted text-center py-4">청산 이력이 없습니다.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-t-border">
                     <thead>
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           종목
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           유형
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           보유일
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           예상일
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           시간차
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           수익률
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-t-text-muted uppercase">
                           사유
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200 dark:divide-t-border">
                       {timeline.entries.map((entry, idx) => (
                         <tr key={idx}>
                           <td className="px-4 py-3 text-sm font-medium">{entry.ticker}</td>
@@ -164,7 +164,7 @@ export default function Analysis() {
                               '-'
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{entry.exit_reason || '-'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-t-text-muted">{entry.exit_reason || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -184,11 +184,11 @@ export default function Analysis() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <div className="p-4 bg-yellow-50 rounded-lg">
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                   <div className="text-sm text-yellow-600">총 FOMO 청산</div>
                   <div className="text-2xl font-bold text-yellow-700">{fomo.total_fomo_exits}건</div>
                 </div>
-                <div className="p-4 bg-red-50 rounded-lg">
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
                   <div className="text-sm text-red-600">평균 놓친 수익</div>
                   <div className="text-2xl font-bold text-red-700">
                     {fomo.avg_missed_return_pct != null
@@ -196,7 +196,7 @@ export default function Analysis() {
                       : '-'}
                   </div>
                 </div>
-                <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <div className="text-sm text-blue-600">총 기회비용</div>
                   <div className="text-2xl font-bold text-blue-700">
                     {fomo.total_missed_opportunity !== null
@@ -206,8 +206,8 @@ export default function Analysis() {
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-700">{fomo.summary.message}</p>
+              <div className="p-4 bg-gray-50 dark:bg-t-bg-elevated rounded-lg">
+                <p className="text-gray-700 dark:text-t-text-secondary">{fomo.summary.message}</p>
                 {fomo.summary.recommendation && (
                   <p className="text-primary-600 mt-2 font-medium">{fomo.summary.recommendation}</p>
                 )}
@@ -223,14 +223,14 @@ export default function Analysis() {
               <CardContent>
                 <div className="space-y-3">
                   {fomo.fomo_exits.map((exit, idx) => (
-                    <div key={idx} className="p-4 border border-gray-200 rounded-lg">
+                    <div key={idx} className="p-4 border border-gray-200 dark:border-t-border rounded-lg">
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-medium">{exit.ticker}</div>
-                          <div className="text-sm text-gray-500">청산일: {exit.exit_date}</div>
+                          <div className="text-sm text-gray-500 dark:text-t-text-muted">청산일: {exit.exit_date}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-gray-500">청산 시 수익률</div>
+                          <div className="text-sm text-gray-500 dark:text-t-text-muted">청산 시 수익률</div>
                           <div
                             className={
                               exit.exit_return_pct >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
@@ -259,11 +259,11 @@ export default function Analysis() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">총 거래 수</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">총 거래 수</span>
                   <span className="font-medium">{(performance.research as { count: number })?.count || 0}건</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">평균 수익률</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">평균 수익률</span>
                   <span className="font-medium">
                     {(performance.research as { avg_return: number | null })?.avg_return !== null
                       ? `${((performance.research as { avg_return: number }).avg_return).toFixed(2)}%`
@@ -271,7 +271,7 @@ export default function Analysis() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">승률</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">승률</span>
                   <span className="font-medium">
                     {(performance.research as { win_rate: number | null })?.win_rate !== null
                       ? `${((performance.research as { win_rate: number }).win_rate * 100).toFixed(1)}%`
@@ -289,11 +289,11 @@ export default function Analysis() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">총 거래 수</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">총 거래 수</span>
                   <span className="font-medium">{(performance.chart as { count: number })?.count || 0}건</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">평균 수익률</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">평균 수익률</span>
                   <span className="font-medium">
                     {(performance.chart as { avg_return: number | null })?.avg_return !== null
                       ? `${((performance.chart as { avg_return: number }).avg_return).toFixed(2)}%`
@@ -301,7 +301,7 @@ export default function Analysis() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">승률</span>
+                  <span className="text-gray-500 dark:text-t-text-muted">승률</span>
                   <span className="font-medium">
                     {(performance.chart as { win_rate: number | null })?.win_rate !== null
                       ? `${((performance.chart as { win_rate: number }).win_rate * 100).toFixed(1)}%`

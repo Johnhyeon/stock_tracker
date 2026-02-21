@@ -42,7 +42,7 @@ export interface ScoreBreakdown {
   mention: {
     score: number
     youtube_count?: number
-    trader_count?: number
+    expert_count?: number
   }
   price: {
     score: number

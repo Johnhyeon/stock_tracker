@@ -7,6 +7,7 @@ from decimal import Decimal
 from integrations.base_client import BaseAPIClient
 from integrations.kis.auth import get_token_manager, KISTokenManager
 from core.config import get_settings
+from core.timezone import now_kst
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class KISClient(BaseAPIClient):
         settings = get_settings()
         super().__init__(
             base_url=settings.kis_base_url,
-            rate_limit=10.0,  # 초당 10회 제한
+            rate_limit=8.0,  # 초당 8회 (KIS 제한 10회, 여유분 확보)
             timeout=30.0,
         )
         self.settings = settings
@@ -85,6 +86,90 @@ class KISClient(BaseAPIClient):
             "volume": int(output.get("acml_vol", "0")),
             "trading_value": int(output.get("acml_tr_pbmn", "0")),
         }
+
+    async def get_index_daily_ohlcv(
+        self,
+        index_code: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> list[dict]:
+        """업종(지수) 기간별 일봉 시세 조회.
+
+        Args:
+            index_code: 업종 코드 ("0001": 코스피, "1001": 코스닥)
+            start_date: 시작일 (YYYYMMDD)
+            end_date: 종료일 (YYYYMMDD)
+
+        Returns:
+            [{"date", "open", "high", "low", "close", "volume", "trading_value"}, ...]
+        """
+        from datetime import timedelta
+
+        if not end_date:
+            end_date = now_kst().strftime("%Y%m%d")
+        if not start_date:
+            start = datetime.strptime(end_date, "%Y%m%d") - timedelta(days=100)
+            start_date = start.strftime("%Y%m%d")
+
+        start_dt = datetime.strptime(start_date, "%Y%m%d")
+        end_dt = datetime.strptime(end_date, "%Y%m%d")
+        all_results = []
+
+        # 100일씩 나누어 조회
+        current_end = end_dt
+        while current_end > start_dt:
+            chunk_start = current_end - timedelta(days=100)
+            if chunk_start < start_dt:
+                chunk_start = start_dt
+
+            headers = await self._get_auth_headers()
+            headers["tr_id"] = "FHKUP03500100"  # 국내주식업종기간별시세
+
+            params = {
+                "FID_COND_MRKT_DIV_CODE": "U",
+                "FID_INPUT_ISCD": index_code,
+                "FID_INPUT_DATE_1": chunk_start.strftime("%Y%m%d"),
+                "FID_INPUT_DATE_2": current_end.strftime("%Y%m%d"),
+                "FID_PERIOD_DIV_CODE": "D",
+            }
+
+            try:
+                data = await self.get(
+                    "/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice",
+                    params=params,
+                    headers=headers,
+                )
+
+                if not data.get("output2"):
+                    logger.debug(f"지수 OHLCV 응답 비어있음 ({index_code}): rt_cd={data.get('rt_cd')}, msg={data.get('msg1', '')}")
+
+                output_list = data.get("output2", [])
+                for item in output_list:
+                    if not item.get("stck_bsop_date"):
+                        continue
+                    all_results.append({
+                        "date": item["stck_bsop_date"],
+                        "open": Decimal(item.get("bstp_nmix_oprc", "0")),
+                        "high": Decimal(item.get("bstp_nmix_hgpr", "0")),
+                        "low": Decimal(item.get("bstp_nmix_lwpr", "0")),
+                        "close": Decimal(item.get("bstp_nmix_prpr", "0")),
+                        "volume": int(item.get("acml_vol", "0")),
+                        "trading_value": int(item.get("acml_tr_pbmn", "0")),
+                    })
+            except Exception as e:
+                logger.warning(f"지수 OHLCV 조회 실패 ({index_code}, {chunk_start}~{current_end}): {e}")
+
+            current_end = chunk_start - timedelta(days=1)
+
+        # 중복 제거 + 정렬
+        seen = set()
+        unique = []
+        for item in all_results:
+            if item["date"] not in seen:
+                seen.add(item["date"])
+                unique.append(item)
+        unique.sort(key=lambda x: x["date"])
+        return unique
 
     async def get_current_price(self, stock_code: str) -> dict:
         """주식 현재가 조회.
@@ -171,7 +256,7 @@ class KISClient(BaseAPIClient):
         from datetime import timedelta
 
         if not end_date:
-            end_date = datetime.now().strftime("%Y%m%d")
+            end_date = now_kst().strftime("%Y%m%d")
         if not start_date:
             start = datetime.strptime(end_date, "%Y%m%d") - timedelta(days=100)
             start_date = start.strftime("%Y%m%d")
@@ -292,6 +377,8 @@ class KISClient(BaseAPIClient):
             try:
                 price = await self.get_current_price(code)
                 return code, price
+            except asyncio.CancelledError:
+                raise  # 취소는 상위로 전파
             except Exception as e:
                 logger.warning(f"Failed to fetch price for {code}: {e}")
                 return code, None

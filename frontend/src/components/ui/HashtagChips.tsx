@@ -51,7 +51,7 @@ export default function HashtagChips({
           className={clsx(
             'inline-flex items-center rounded-full',
             size === 'sm' ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-1 text-sm',
-            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+            'bg-gray-100 text-gray-600 dark:bg-t-bg-elevated dark:text-t-text-muted'
           )}
         >
           +{remaining}

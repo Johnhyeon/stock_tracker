@@ -72,6 +72,32 @@ export interface AuthorStatsResponse {
   total_count: number
 }
 
+export interface TraderPick {
+  stock_code: string
+  stock_name: string
+  return_pct: number
+  mention_date: string
+}
+
+export interface TraderRanking {
+  rank: number
+  name: string
+  idea_count: number
+  avg_return_pct: number
+  win_rate: number
+  total_return_pct: number
+  best_pick: TraderPick | null
+  worst_pick: TraderPick | null
+  picks: TraderPick[]
+}
+
+export interface TraderRankingResponse {
+  traders: TraderRanking[]
+  total_traders: number
+  analysis_period_days: number
+  min_mentions: number
+}
+
 export interface TelegramIdeaCollectResult {
   channel_name: string
   messages_collected: number

@@ -17,8 +17,8 @@ class AlertType(str, PyEnum):
     TARGET_REACHED = "target_reached"  # 목표가 도달
     FUNDAMENTAL_DETERIORATION = "fundamental_deterioration"  # 펀더멘털 악화
     TIME_EXPIRED = "time_expired"  # 예상 기간 초과
-    TRADER_NEW_MENTION = "trader_new_mention"  # 트레이더 신규 언급
-    TRADER_CROSS_CHECK = "trader_cross_check"  # 내 종목 트레이더 언급
+    EXPERT_NEW_MENTION = "expert_new_mention"  # 전문가 신규 언급
+    EXPERT_CROSS_CHECK = "expert_cross_check"  # 내 종목 전문가 언급
     TELEGRAM_KEYWORD = "telegram_keyword"  # 텔레그램 키워드 감지
     CUSTOM = "custom"  # 사용자 정의
 

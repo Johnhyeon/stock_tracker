@@ -6,6 +6,8 @@ from pathlib import Path
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Optional
+
+from core.timezone import now_kst, today_kst
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,7 +91,7 @@ class EtfRotationService:
         days: int = 20,
     ) -> Optional[int]:
         """최근 N일 평균 거래대금."""
-        end_date = date.today()
+        end_date = today_kst()
         start_date = end_date - timedelta(days=days + 10)  # 여유분
 
         stmt = (
@@ -113,7 +115,7 @@ class EtfRotationService:
         days: int,
     ) -> Optional[float]:
         """N일 전 대비 등락률 계산."""
-        target_date = date.today() - timedelta(days=days)
+        target_date = today_kst() - timedelta(days=days)
         past_price = await self._get_etf_price_at_date(etf_code, target_date)
 
         if past_price and past_price > 0:
@@ -296,7 +298,7 @@ class EtfRotationService:
         days: int = 60,
     ) -> list[dict]:
         """ETF 차트 데이터 조회."""
-        end_date = date.today()
+        end_date = today_kst()
         start_date = end_date - timedelta(days=days + 10)
 
         stmt = (
@@ -377,7 +379,7 @@ class EtfRotationService:
                 })
 
         # 테마 관련 뉴스 조회 (최근 7일)
-        news_since = datetime.now() - timedelta(days=7)
+        news_since = now_kst().replace(tzinfo=None) - timedelta(days=7)
         news_stmt = (
             select(ThemeNews)
             .where(
@@ -534,7 +536,7 @@ class EtfRotationService:
             logger.error(f"KIS 클라이언트 초기화 실패: {e}")
             return {
                 "themes": [],
-                "updated_at": datetime.now().isoformat(),
+                "updated_at": now_kst().isoformat(),
                 "market_status": "error",
                 "error": str(e),
             }
@@ -659,7 +661,7 @@ class EtfRotationService:
             item["rank"] = i
 
         # 장 운영 시간 판단
-        now = datetime.now()
+        now = now_kst()
         market_status = "closed"
         if now.weekday() < 5:  # 평일
             if 9 <= now.hour < 16:
@@ -695,9 +697,11 @@ class EtfRotationService:
             return []
 
         try:
-            # pykrx로 ETF 구성 종목 조회
-            today = datetime.now().strftime('%Y%m%d')
-            df = pykrx_stock.get_etf_portfolio_deposit_file(etf_code, today)
+            # pykrx 호출은 동기 → 스레드풀에서 실행
+            today = now_kst().strftime('%Y%m%d')
+            df = await asyncio.to_thread(
+                pykrx_stock.get_etf_portfolio_deposit_file, etf_code, today
+            )
 
             if df.empty:
                 return []
@@ -713,16 +717,30 @@ class EtfRotationService:
             for tickers in idea_tickers_raw:
                 if tickers:
                     for ticker in tickers:
-                        match = re.search(r'\((\d{6})\)', ticker)
+                        match = re.search(r'\(([A-Za-z0-9]{6})\)', ticker)
                         if match:
                             my_stock_codes.add(match.group(1))
 
+            # 종목 코드 목록 미리 추출
+            stock_codes_list = list(df.index)[:limit]
+
+            # pykrx 종목명 조회를 스레드풀에서 일괄 실행
+            def _get_stock_names(codes):
+                names = {}
+                for code in codes:
+                    try:
+                        names[code] = pykrx_stock.get_market_ticker_name(code)
+                    except Exception:
+                        names[code] = code
+                return names
+
+            stock_names_map = await asyncio.to_thread(_get_stock_names, stock_codes_list)
+
             holdings = []
 
-            for stock_code in list(df.index)[:limit]:
+            for stock_code in stock_codes_list:
                 try:
-                    # 종목명 조회
-                    stock_name = pykrx_stock.get_market_ticker_name(stock_code)
+                    stock_name = stock_names_map.get(stock_code, stock_code)
                     amount = float(df.loc[stock_code, '금액'])
                     weight = float(df.loc[stock_code, '비중']) if '비중' in df.columns else None
 
@@ -762,7 +780,7 @@ class EtfRotationService:
                     foreign_net = None
                     inst_net = None
 
-                    flow_since = date.today() - timedelta(days=7)
+                    flow_since = today_kst() - timedelta(days=7)
                     flow_stmt = (
                         select(
                             func.sum(StockInvestorFlow.foreign_net_amount).label("foreign_net"),

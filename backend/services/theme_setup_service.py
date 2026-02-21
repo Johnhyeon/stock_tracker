@@ -11,11 +11,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_, desc, delete
 from sqlalchemy.dialects.postgresql import insert
 
-from models import ThemeSetup, ThemeChartPattern, ThemeNewsStats, YouTubeMention, TraderMention, StockOHLCV
+from models import ThemeSetup, ThemeChartPattern, ThemeNewsStats, YouTubeMention, ExpertMention, StockOHLCV
 from services.news_collector_service import NewsCollectorService
 from services.chart_pattern_service import ChartPatternService
 from services.price_service import get_price_service
 from services.investor_flow_service import InvestorFlowService
+from core.config import get_settings
+from core.timezone import now_kst, today_kst
+
+_settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
@@ -98,16 +102,16 @@ class ThemeSetupService:
     ) -> dict:
         """기존 언급 점수 계산 (20점 만점).
 
-        YouTube와 트레이더 언급 데이터 기반.
+        YouTube와 전문가 언급 데이터 기반.
         """
-        stocks = self._tms.get_stocks_in_theme(theme_name)
+        stocks = self._theme_map.get(theme_name, [])
         stock_codes = [s["code"] for s in stocks if s.get("code")]
 
         if not stock_codes:
-            return {"score": 0, "youtube_count": 0, "trader_count": 0}
+            return {"score": 0, "youtube_count": 0, "expert_count": 0}
 
         # 최근 7일 기준
-        start_date = date.today() - timedelta(days=7)
+        start_date = today_kst() - timedelta(days=7)
 
         # YouTube 언급 수
         youtube_stmt = (
@@ -122,36 +126,38 @@ class ThemeSetupService:
         youtube_result = await self.db.execute(youtube_stmt)
         youtube_count = youtube_result.scalar() or 0
 
-        # 트레이더 언급 수 (TraderMention 행 수)
-        trader_stmt = (
-            select(func.count(TraderMention.id))
-            .where(
-                and_(
-                    TraderMention.stock_code.in_(stock_codes),
-                    TraderMention.mention_date >= start_date,
+        # 전문가 언급 수 (ExpertMention 행 수)
+        expert_count = 0
+        if _settings.expert_feature_enabled:
+            expert_stmt = (
+                select(func.count(ExpertMention.id))
+                .where(
+                    and_(
+                        ExpertMention.stock_code.in_(stock_codes),
+                        ExpertMention.mention_date >= start_date,
+                    )
                 )
             )
-        )
-        trader_result = await self.db.execute(trader_stmt)
-        trader_count = trader_result.scalar() or 0
+            expert_result = await self.db.execute(expert_stmt)
+            expert_count = expert_result.scalar() or 0
 
         # 점수 계산 (20점 만점)
         # YouTube (0-12점): 5개 영상 이상이면 만점
         youtube_score = min(youtube_count / 5 * 12, 12)
-        # 트레이더 (0-8점): 10회 이상이면 만점
-        trader_score = min(trader_count / 10 * 8, 8)
+        # 전문가 (0-8점): 10회 이상이면 만점
+        expert_score = min(expert_count / 10 * 8, 8)
 
-        total_score = youtube_score + trader_score
+        total_score = youtube_score + expert_score
 
         return {
             "score": round(total_score, 1),
             "youtube_count": youtube_count,
-            "trader_count": int(trader_count) if trader_count else 0,
+            "expert_count": int(expert_count) if expert_count else 0,
         }
 
     def _is_market_closed_day(self) -> bool:
         """주말 또는 장 마감 후인지 확인."""
-        now = datetime.now()
+        now = now_kst()
         # 주말 체크 (토요일=5, 일요일=6)
         if now.weekday() >= 5:
             return True
@@ -255,7 +261,7 @@ class ThemeSetupService:
         7일 평균 등락률 + 거래량 변화.
         주말/공휴일에는 DB의 최근 거래일 데이터 사용.
         """
-        stocks = self._tms.get_stocks_in_theme(theme_name)
+        stocks = self._theme_map.get(theme_name, [])
         if not stocks:
             return {"score": 0, "avg_change": 0, "volume_change": 0}
 
@@ -311,7 +317,7 @@ class ThemeSetupService:
 
         외국인/기관 순매수 데이터 기반.
         """
-        stocks = self._tms.get_stocks_in_theme(theme_name)
+        stocks = self._theme_map.get(theme_name, [])
         stock_codes = [s["code"] for s in stocks if s.get("code")]
 
         if not stock_codes:
@@ -387,10 +393,10 @@ class ThemeSetupService:
         Returns:
             {"calculated_count": N, "emerging_count": M, "timestamp": str}
         """
-        setup_date = date.today()
+        setup_date = today_kst()
         results = []
 
-        for theme_name in self._tms.get_theme_names():
+        for theme_name in self._theme_map.keys():
             try:
                 score_data = await self.calculate_setup_score(theme_name)
                 results.append(score_data)
@@ -426,7 +432,7 @@ class ThemeSetupService:
                 total_setup_score=data["total_score"],
                 score_breakdown=data["score_breakdown"],
                 top_stocks=top_stocks,
-                total_stocks_in_theme=len(self._tms.get_stocks_in_theme(theme_name)),
+                total_stocks_in_theme=len(self._theme_map.get(theme_name, [])),
                 stocks_with_pattern=data["score_breakdown"]["chart"].get("pattern_count", 0),
                 is_emerging=is_emerging,
             ).on_conflict_do_update(
@@ -444,7 +450,7 @@ class ThemeSetupService:
                     'total_stocks_in_theme': len(self._theme_map.get(theme_name, [])),
                     'stocks_with_pattern': data["score_breakdown"]["chart"].get("pattern_count", 0),
                     'is_emerging': is_emerging,
-                    'updated_at': datetime.utcnow(),
+                    'updated_at': now_kst().replace(tzinfo=None),
                 }
             )
 
@@ -459,7 +465,7 @@ class ThemeSetupService:
         return {
             "calculated_count": len(results),
             "emerging_count": emerging_count,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now_kst().isoformat(),
         }
 
     async def _get_top_pattern_stocks(
@@ -473,7 +479,7 @@ class ThemeSetupService:
             .where(
                 and_(
                     ThemeChartPattern.theme_name == theme_name,
-                    ThemeChartPattern.analysis_date == date.today(),
+                    ThemeChartPattern.analysis_date == today_kst(),
                     ThemeChartPattern.is_active == True,
                 )
             )
@@ -532,17 +538,17 @@ class ThemeSetupService:
         mention = breakdown.get("mention", {})
         mention_score = setup.mention_score
         youtube_count = mention.get("youtube_count", 0)
-        trader_count = mention.get("trader_count", 0)
+        expert_count = mention.get("expert_count", 0)
 
         if mention_score >= 15:
-            explanations.append(f"언급 많음 (유튜브 {youtube_count}건, 트레이더 {trader_count}건)")
+            explanations.append(f"언급 많음 (유튜브 {youtube_count}건, 전문가 {expert_count}건)")
         elif mention_score >= 5:
-            if youtube_count > 0 and trader_count > 0:
-                explanations.append(f"언급 있음 (유튜브 {youtube_count}, 트레이더 {trader_count})")
+            if youtube_count > 0 and expert_count > 0:
+                explanations.append(f"언급 있음 (유튜브 {youtube_count}, 전문가 {expert_count})")
             elif youtube_count > 0:
                 explanations.append(f"유튜브 언급 {youtube_count}건")
-            elif trader_count > 0:
-                explanations.append(f"트레이더 언급 {trader_count}건")
+            elif expert_count > 0:
+                explanations.append(f"전문가 언급 {expert_count}건")
 
         # 4. 수급 설명
         flow = breakdown.get("flow", {})
@@ -611,7 +617,7 @@ class ThemeSetupService:
             select(ThemeSetup)
             .where(
                 and_(
-                    ThemeSetup.setup_date == date.today(),
+                    ThemeSetup.setup_date == today_kst(),
                     ThemeSetup.total_setup_score >= min_score,
                 )
             )
@@ -652,7 +658,7 @@ class ThemeSetupService:
             .where(
                 and_(
                     ThemeSetup.theme_name == theme_name,
-                    ThemeSetup.setup_date == date.today(),
+                    ThemeSetup.setup_date == today_kst(),
                 )
             )
         )
@@ -669,7 +675,7 @@ class ThemeSetupService:
             .where(
                 and_(
                     ThemeSetup.theme_name == theme_name,
-                    ThemeSetup.setup_date >= date.today() - timedelta(days=14),
+                    ThemeSetup.setup_date >= today_kst() - timedelta(days=14),
                 )
             )
             .order_by(ThemeSetup.setup_date)
@@ -709,7 +715,7 @@ class ThemeSetupService:
         days: int = 30,
     ) -> list[dict]:
         """테마 셋업 히스토리 조회."""
-        start_date = date.today() - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         stmt = (
             select(ThemeSetup)
@@ -765,7 +771,7 @@ class ThemeSetupService:
                 ]
             }
         """
-        start_date = date.today() - timedelta(days=days)
+        start_date = today_kst() - timedelta(days=days)
 
         # 1. 가장 최근 날짜의 상위 N개 테마 조회
         latest_date_stmt = select(func.max(ThemeSetup.setup_date))

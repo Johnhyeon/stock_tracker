@@ -16,7 +16,7 @@ async def get_stock_profile(
 ):
     """종목 통합 프로필 조회.
 
-    하나의 종목코드로 OHLCV, 수급, 유튜브/트레이더/텔레그램 언급,
+    하나의 종목코드로 OHLCV, 수급, 유튜브/전문가/텔레그램 언급,
     공시, 감정분석, 차트패턴, 소속 테마를 한번에 조회합니다.
     """
     service = CrossReferenceService(db)

@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete, func
 from sqlalchemy.dialects.postgresql import insert
 
-from models import ThemeChartPattern, ChartPatternType, YouTubeMention, TraderMention, StockOHLCV
+from models import ThemeChartPattern, ChartPatternType, YouTubeMention, ExpertMention, StockOHLCV
 from services.price_service import get_price_service
 from services.theme_map_service import get_theme_map_service
+from core.timezone import now_kst, today_kst
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ class ChartPatternService:
         1. DB(stock_ohlcv 테이블)에서 먼저 조회
         2. DB에 충분한 데이터가 없으면 KIS API fallback
         """
-        end_date = date.today()
+        end_date = today_kst()
         start_date = end_date - timedelta(days=days + 30)  # 여유분 포함
 
         # 1. DB에서 먼저 조회
@@ -261,10 +262,14 @@ class ChartPatternService:
             if current_price < t2_price:
                 continue
 
+            support = min(t1_price, t2_price)
+
+            # 넥라인(중간고점) 대비 30% 이상 상승 시 패턴 만료 (이미 돌파 완료)
+            if current_price > mid_high * 1.3:
+                continue
+
             # 신뢰도 계산
             confidence = min(100, 60 + mid_rise_pct + (5 - price_diff_pct) * 4)
-
-            support = min(t1_price, t2_price)
 
             return PatternResult(
                 pattern_type=ChartPatternType.DOUBLE_BOTTOM.value,
@@ -328,6 +333,10 @@ class ChartPatternService:
 
             current_price = ohlcv.closes[-1]
             support = min(prices)
+
+            # 지지선 대비 50% 이상 상승 시 패턴 만료 (이미 돌파 완료)
+            if current_price > support * 1.5:
+                continue
 
             # 신뢰도 계산
             confidence = min(100, 70 + (5 - max_diff) * 6)
@@ -401,6 +410,12 @@ class ChartPatternService:
         current_price = ohlcv.closes[-1]
         current_high = peak_prices[-1] + high_slope * (len(ohlcv.closes) - recent_peaks[-1])
         current_low = trough_prices[-1] + low_slope * (len(ohlcv.closes) - recent_troughs[-1])
+
+        # 외삽된 지지/저항선이 비현실적이면 제외
+        if current_low <= 0 or current_high <= 0:
+            return None
+        if current_low >= current_high:
+            return None  # 이미 수렴 완료
 
         # 신뢰도 계산
         volatility_reduction = (first_volatility - second_volatility) / first_volatility * 100
@@ -559,8 +574,8 @@ class ChartPatternService:
         return results
 
     async def _get_mentioned_stock_codes(self, days: int = 7) -> set[str]:
-        """최근 언급된 종목 코드 조회 (YouTube + Trader)."""
-        start_date = date.today() - timedelta(days=days)
+        """최근 언급된 종목 코드 조회 (YouTube + Expert)."""
+        start_date = today_kst() - timedelta(days=days)
         mentioned_codes = set()
 
         # YouTube 언급 종목
@@ -573,13 +588,13 @@ class ChartPatternService:
             if row:
                 mentioned_codes.update(row)
 
-        # Trader 언급 종목
-        trader_stmt = (
-            select(func.distinct(TraderMention.stock_code))
-            .where(TraderMention.mention_date >= start_date)
+        # Expert 언급 종목
+        expert_stmt = (
+            select(func.distinct(ExpertMention.stock_code))
+            .where(ExpertMention.mention_date >= start_date)
         )
-        trader_result = await self.db.execute(trader_stmt)
-        for code in trader_result.scalars().all():
+        expert_result = await self.db.execute(expert_stmt)
+        for code in expert_result.scalars().all():
             if code:
                 mentioned_codes.add(code)
 
@@ -606,7 +621,7 @@ class ChartPatternService:
                 "mentioned_stocks": int,
             }
         """
-        analysis_date = date.today()
+        analysis_date = today_kst()
         total_patterns = 0
 
         # 1. 언급된 종목 코드 수집
@@ -690,7 +705,7 @@ class ChartPatternService:
                                     'current_price': pattern.current_price,
                                     'price_from_support_pct': price_from_support,
                                     'price_from_resistance_pct': price_from_resistance,
-                                    'updated_at': datetime.utcnow(),
+                                    'updated_at': now_kst().replace(tzinfo=None),
                                 }
                             )
                             await self.db.execute(stmt)
@@ -719,7 +734,7 @@ class ChartPatternService:
         analysis_date: Optional[date] = None,
     ) -> list[dict]:
         """테마의 패턴 결과 조회."""
-        target_date = analysis_date or date.today()
+        target_date = analysis_date or today_kst()
 
         stmt = (
             select(ThemeChartPattern)
@@ -756,7 +771,7 @@ class ChartPatternService:
         analysis_date: Optional[date] = None,
     ) -> Optional[dict]:
         """특정 종목의 패턴 조회."""
-        target_date = analysis_date or date.today()
+        target_date = analysis_date or today_kst()
 
         stmt = (
             select(ThemeChartPattern)

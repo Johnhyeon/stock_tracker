@@ -1,5 +1,5 @@
 # DART (전자공시시스템) API Integration
-from integrations.dart.client import DARTClient, get_dart_client
+from integrations.dart.client import DARTClient, DARTRateLimitError, get_dart_client
 from integrations.dart.filters import (
     classify_disclosure_type,
     classify_importance,
@@ -8,6 +8,7 @@ from integrations.dart.filters import (
 
 __all__ = [
     "DARTClient",
+    "DARTRateLimitError",
     "get_dart_client",
     "classify_disclosure_type",
     "classify_importance",

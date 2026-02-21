@@ -7,6 +7,8 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from core.timezone import now_kst, today_kst
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, func, distinct
@@ -24,6 +26,7 @@ from models import (
     TelegramIdea,
     Disclosure,
 )
+from models.financial_statement import FinancialStatement
 from schemas.data_status import (
     DataCategory,
     ScheduleInfo,
@@ -144,6 +147,16 @@ DATA_TYPES = {
         ),
         "can_refresh": True,
     },
+    # 재무 데이터 (Fundamental)
+    "financial_statements": {
+        "name": "재무제표",
+        "category": DataCategory.ANALYSIS,
+        "schedule": ScheduleInfo(
+            description="공시 감지 시 자동 / 수동",
+            is_market_hours_only=False,
+        ),
+        "can_refresh": True,
+    },
 }
 
 
@@ -204,8 +217,8 @@ async def get_data_status():
     각 데이터가 언제 마지막으로 업데이트됐는지,
     현재 얼마나 오래됐는지 확인할 수 있습니다.
     """
-    now = datetime.now()
-    today = date.today()
+    now = now_kst().replace(tzinfo=None)
+    today = today_kst()
 
     async with async_session_maker() as db:
         investor_flow = await _check_investor_flow_status(db, today)
@@ -245,8 +258,8 @@ async def get_all_data_status():
 
     11개 데이터 타입의 상태를 4개 카테고리로 분류하여 반환합니다.
     """
-    now = datetime.now()
-    today = date.today()
+    now = now_kst().replace(tzinfo=None)
+    today = today_kst()
 
     async with async_session_maker() as db:
         # 모든 데이터 상태 수집
@@ -261,6 +274,7 @@ async def get_all_data_status():
         # Analysis 데이터
         statuses["chart_patterns"] = _create_status_item("chart_patterns", await _check_chart_pattern_status(db, today))
         statuses["theme_setups"] = _create_status_item("theme_setups", await _check_theme_setup_status(db, now))
+        statuses["financial_statements"] = _create_status_item("financial_statements", await _check_financial_statements_status(db, now))
 
         # External 데이터
         statuses["youtube"] = _create_status_item("youtube", await _check_youtube_status(db, now))
@@ -319,15 +333,52 @@ def _create_status_item(key: str, status: DataStatusItem) -> DataStatusItemFull:
 # ==========================================
 
 async def _check_price_update_status(db, now: datetime) -> DataStatusItem:
-    """실시간 가격 업데이트 상태 (OHLCV 최신 데이터 기반)."""
-    # 실시간 가격은 캐시에서 관리되므로, OHLCV 최신 데이터를 참조
-    return DataStatusItem(
-        name="실시간 가격",
-        last_updated=now,
-        record_count=0,
-        is_stale=False,
-        status="ok",
-    )
+    """실시간 가격 업데이트 상태 (활성 포지션 종목 수 기반)."""
+    from models import InvestmentIdea, Position, IdeaStatus
+    from models.job_execution_log import JobExecutionLog
+    from sqlalchemy import desc
+
+    try:
+        # 활성 포지션 종목 수 조회
+        stmt = (
+            select(func.count(distinct(Position.ticker)))
+            .join(InvestmentIdea)
+            .where(
+                InvestmentIdea.status == IdeaStatus.ACTIVE,
+                Position.exit_date.is_(None),
+            )
+        )
+        result = await db.execute(stmt)
+        stock_count = result.scalar() or 0
+
+        # 마지막 성공 시간
+        stmt = (
+            select(JobExecutionLog.finished_at)
+            .where(
+                JobExecutionLog.job_name == "price_update",
+                JobExecutionLog.status == "success",
+            )
+            .order_by(desc(JobExecutionLog.finished_at))
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        last_run = result.scalar()
+
+        return DataStatusItem(
+            name="실시간 가격",
+            last_updated=last_run or now,
+            record_count=stock_count,
+            is_stale=False,
+            status="ok",
+        )
+    except Exception:
+        return DataStatusItem(
+            name="실시간 가격",
+            last_updated=now,
+            record_count=0,
+            is_stale=False,
+            status="ok",
+        )
 
 
 async def _check_investor_flow_status(db, today: date) -> DataStatusItem:
@@ -563,7 +614,7 @@ async def _check_disclosure_status(db, today: date) -> DataStatusItem:
                 status="empty",
             )
 
-        hours_old = (datetime.now() - latest_time).total_seconds() / 3600
+        hours_old = (now_kst().replace(tzinfo=None) - latest_time).total_seconds() / 3600
         is_stale = hours_old > 2  # 2시간 이상 지나면 stale
 
         return DataStatusItem(
@@ -708,9 +759,10 @@ async def refresh_data(
     valid_targets = {
         # 기존 4개
         "investor_flow", "ohlcv", "chart_patterns", "theme_setups",
-        # 신규 7개
+        # 신규
         "etf_ohlcv", "youtube", "disclosure",
         "telegram_reports", "telegram_sentiment", "telegram_ideas",
+        "financial_statements",
     }
 
     if request.targets:
@@ -733,7 +785,7 @@ async def refresh_data(
 
     _refresh_status = {
         "is_running": True,
-        "started_at": datetime.now(),
+        "started_at": now_kst(),
         "completed_at": None,
         "progress": {t: "pending" for t in targets},
         "errors": [],
@@ -752,60 +804,65 @@ async def get_refresh_status():
     return _refresh_status
 
 
+async def _run_with_status(name: str, coro):
+    """래퍼 코루틴: 개별 작업 시작/완료 시 즉시 상태 업데이트."""
+    _refresh_status["progress"][name] = "running"
+    try:
+        result = await coro
+        _refresh_status["progress"][name] = "completed"
+        logger.info(f"{name} 새로고침 완료: {result}")
+        return result
+    except Exception as e:
+        _refresh_status["progress"][name] = "error"
+        _refresh_status["errors"].append(f"{name}: {str(e)}")
+        logger.error(f"{name} 새로고침 실패: {e}")
+        return e
+
+
 async def _run_refresh(targets: list[str], force_full: bool = False):
     """백그라운드에서 데이터 새로고침 실행."""
     global _refresh_status
 
     try:
-        tasks = []
+        wrapped_tasks = []
 
         # 기존 데이터 타입
         if "investor_flow" in targets:
-            tasks.append(("investor_flow", _refresh_investor_flow(force_full)))
+            wrapped_tasks.append(_run_with_status("investor_flow", _refresh_investor_flow(force_full)))
 
         if "ohlcv" in targets:
-            tasks.append(("ohlcv", _refresh_ohlcv()))
+            wrapped_tasks.append(_run_with_status("ohlcv", _refresh_ohlcv()))
 
         if "chart_patterns" in targets:
-            tasks.append(("chart_patterns", _refresh_chart_patterns()))
+            wrapped_tasks.append(_run_with_status("chart_patterns", _refresh_chart_patterns()))
 
         if "theme_setups" in targets:
-            tasks.append(("theme_setups", _refresh_theme_setups()))
+            wrapped_tasks.append(_run_with_status("theme_setups", _refresh_theme_setups()))
 
         # 신규 데이터 타입
         if "etf_ohlcv" in targets:
-            tasks.append(("etf_ohlcv", _refresh_etf_ohlcv()))
+            wrapped_tasks.append(_run_with_status("etf_ohlcv", _refresh_etf_ohlcv()))
 
         if "youtube" in targets:
-            tasks.append(("youtube", _refresh_youtube()))
+            wrapped_tasks.append(_run_with_status("youtube", _refresh_youtube()))
 
         if "disclosure" in targets:
-            tasks.append(("disclosure", _refresh_disclosure()))
+            wrapped_tasks.append(_run_with_status("disclosure", _refresh_disclosure()))
 
         if "telegram_reports" in targets:
-            tasks.append(("telegram_reports", _refresh_telegram_reports()))
+            wrapped_tasks.append(_run_with_status("telegram_reports", _refresh_telegram_reports()))
 
         if "telegram_sentiment" in targets:
-            tasks.append(("telegram_sentiment", _refresh_telegram_sentiment()))
+            wrapped_tasks.append(_run_with_status("telegram_sentiment", _refresh_telegram_sentiment()))
 
         if "telegram_ideas" in targets:
-            tasks.append(("telegram_ideas", _refresh_telegram_ideas()))
+            wrapped_tasks.append(_run_with_status("telegram_ideas", _refresh_telegram_ideas()))
 
-        # 병렬 실행
-        results = await asyncio.gather(
-            *[task for _, task in tasks],
-            return_exceptions=True
-        )
+        if "financial_statements" in targets:
+            wrapped_tasks.append(_run_with_status("financial_statements", _refresh_financial_statements()))
 
-        # 결과 처리
-        for (name, _), result in zip(tasks, results):
-            if isinstance(result, Exception):
-                _refresh_status["progress"][name] = "error"
-                _refresh_status["errors"].append(f"{name}: {str(result)}")
-                logger.error(f"{name} 새로고침 실패: {result}")
-            else:
-                _refresh_status["progress"][name] = "completed"
-                logger.info(f"{name} 새로고침 완료: {result}")
+        # 병렬 실행 — 래퍼가 개별 완료 즉시 상태 업데이트
+        await asyncio.gather(*wrapped_tasks, return_exceptions=True)
 
     except Exception as e:
         logger.error(f"새로고침 실패: {e}")
@@ -813,7 +870,7 @@ async def _run_refresh(targets: list[str], force_full: bool = False):
 
     finally:
         _refresh_status["is_running"] = False
-        _refresh_status["completed_at"] = datetime.now()
+        _refresh_status["completed_at"] = now_kst()
 
 
 # ==========================================
@@ -824,8 +881,6 @@ async def _refresh_investor_flow(force_full: bool = False) -> dict:
     """투자자 수급 데이터 새로고침."""
     from services.investor_flow_service import InvestorFlowService
     from services.theme_map_service import get_theme_map_service
-
-    _refresh_status["progress"]["investor_flow"] = "running"
 
     tms = get_theme_map_service()
     all_stocks = {}
@@ -854,7 +909,6 @@ async def _refresh_ohlcv() -> dict:
     """OHLCV 데이터 새로고침."""
     from scheduler.jobs.ohlcv_collect import collect_ohlcv_daily
 
-    _refresh_status["progress"]["ohlcv"] = "running"
     await collect_ohlcv_daily()
     return {"status": "completed"}
 
@@ -863,7 +917,6 @@ async def _refresh_chart_patterns() -> dict:
     """차트 패턴 분석 새로고침."""
     from scheduler.jobs.chart_pattern_analyze import analyze_chart_patterns
 
-    _refresh_status["progress"]["chart_patterns"] = "running"
     result = await analyze_chart_patterns()
     return result
 
@@ -872,7 +925,6 @@ async def _refresh_theme_setups() -> dict:
     """테마 셋업 점수 새로고침."""
     from scheduler.jobs.theme_setup_calculate import calculate_theme_setups
 
-    _refresh_status["progress"]["theme_setups"] = "running"
     result = await calculate_theme_setups()
     return result
 
@@ -885,7 +937,6 @@ async def _refresh_etf_ohlcv() -> dict:
     """ETF OHLCV 데이터 새로고침."""
     from scheduler.jobs.etf_collect import collect_etf_ohlcv_daily
 
-    _refresh_status["progress"]["etf_ohlcv"] = "running"
     await collect_etf_ohlcv_daily()
     return {"status": "completed"}
 
@@ -894,7 +945,6 @@ async def _refresh_youtube() -> dict:
     """YouTube 데이터 새로고침."""
     from scheduler.jobs.youtube_collect import collect_youtube_videos
 
-    _refresh_status["progress"]["youtube"] = "running"
     result = await collect_youtube_videos()
     return result
 
@@ -903,7 +953,6 @@ async def _refresh_disclosure() -> dict:
     """공시 데이터 새로고침."""
     from scheduler.jobs.disclosure_collect import collect_disclosures_for_active_positions
 
-    _refresh_status["progress"]["disclosure"] = "running"
     result = await collect_disclosures_for_active_positions()
     return result
 
@@ -912,7 +961,6 @@ async def _refresh_telegram_reports() -> dict:
     """텔레그램 리포트 수집."""
     from scheduler.jobs.sentiment_analyze import collect_telegram_reports
 
-    _refresh_status["progress"]["telegram_reports"] = "running"
     await collect_telegram_reports()
     return {"status": "completed"}
 
@@ -921,7 +969,6 @@ async def _refresh_telegram_sentiment() -> dict:
     """텔레그램 감정 분석 실행."""
     from scheduler.jobs.sentiment_analyze import analyze_telegram_sentiments
 
-    _refresh_status["progress"]["telegram_sentiment"] = "running"
     await analyze_telegram_sentiments()
     return {"status": "completed"}
 
@@ -930,6 +977,49 @@ async def _refresh_telegram_ideas() -> dict:
     """텔레그램 아이디어 수집."""
     from scheduler.jobs.telegram_idea_collect import collect_telegram_ideas
 
-    _refresh_status["progress"]["telegram_ideas"] = "running"
     await collect_telegram_ideas()
+    return {"status": "completed"}
+
+
+async def _check_financial_statements_status(db, now: datetime) -> DataStatusItem:
+    """재무제표 데이터 상태 확인."""
+    try:
+        stmt = select(
+            func.max(FinancialStatement.collected_at),
+            func.count(FinancialStatement.id),
+            func.count(distinct(FinancialStatement.stock_code)),
+        )
+        result = await db.execute(stmt)
+        row = result.one()
+
+        latest_time, total_count, stock_count = row
+
+        if not latest_time:
+            return DataStatusItem(
+                name="재무제표",
+                record_count=0,
+                is_stale=True,
+                status="empty",
+            )
+
+        days_old = (now - latest_time).total_seconds() / 86400
+        is_stale = days_old > 30  # 30일 이상 지나면 stale
+
+        return DataStatusItem(
+            name="재무제표",
+            last_updated=latest_time,
+            record_count=total_count,
+            is_stale=is_stale,
+            status="stale" if is_stale else "ok",
+        )
+    except Exception as e:
+        logger.error(f"재무제표 상태 확인 실패: {e}")
+        return DataStatusItem(name="재무제표", status="error")
+
+
+async def _refresh_financial_statements() -> dict:
+    """전체 종목 재무제표 일괄 수집."""
+    from scheduler.jobs.financial_collect import collect_financial_statements_job
+
+    await collect_financial_statements_job()
     return {"status": "completed"}

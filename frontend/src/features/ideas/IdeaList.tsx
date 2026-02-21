@@ -1,361 +1,754 @@
-import { useEffect, useState, useMemo, lazy, Suspense } from 'react'
+import { useEffect, useState, useMemo, lazy, Suspense, useCallback, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useIdeaStore } from '../../store/useIdeaStore'
-import { Card, CardContent } from '../../components/ui/Card'
-import Badge from '../../components/ui/Badge'
-import Select from '../../components/ui/Select'
-import TelegramIdeaList from './TelegramIdeaList'
-import type { Idea, IdeaStatus, IdeaType } from '../../types/idea'
+import { ideaApi, positionApi } from '../../services/api'
+import MiniSparkline, { type SparklineMap, getSparklineSinceDate } from '../../components/MiniSparkline'
+import { IdeaListSkeleton } from '../../components/SkeletonLoader'
+import { useRealtimePolling } from '../../hooks/useRealtimePolling'
+import { useFeatureFlags } from '../../hooks/useFeatureFlags'
+import AddBuyModal from './modals/AddBuyModal'
+import AddPositionModal from './modals/AddPositionModal'
+import ExitPositionModal from './modals/ExitPositionModal'
+import PartialExitModal from './modals/PartialExitModal'
+import type {
+  Idea,
+  IdeaSummary,
+  Position,
+  PositionCreate,
+  PositionAddBuy,
+  PositionExit,
+  PositionPartialExit,
+} from '../../types/idea'
 
-// Lazy load heavy components
-const UnifiedIdeaList = lazy(() => import('./views/UnifiedIdeaList'))
+// Lazy load tab content
+const TelegramIdeaList = lazy(() => import('./TelegramIdeaList'))
 const IdeaAnalytics = lazy(() => import('./views/IdeaAnalytics'))
 
-type ViewMode = 'card' | 'list'
-type TabType = 'unified' | 'manual' | 'telegram' | 'analytics'
+type TabType = 'portfolio' | 'telegram' | 'analytics'
+type TradeAction = 'buy' | 'exit' | 'partial-exit'
 
-const TAB_LABELS: Record<TabType, string> = {
-  unified: '통합',
-  manual: '수동',
-  telegram: '텔레그램',
-  analytics: '분석',
+const TAB_CONFIG: { key: TabType; label: string; iconPath: string }[] = [
+  {
+    key: 'portfolio',
+    label: '포트폴리오',
+    iconPath: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+  },
+  {
+    key: 'telegram',
+    label: '텔레그램',
+    iconPath: 'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
+  },
+  {
+    key: 'analytics',
+    label: '분석',
+    iconPath: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+  },
+]
+
+// ─── Utilities ───
+
+function formatMoney(amount: number): string {
+  if (amount === 0) return '0'
+  const abs = Math.abs(amount)
+  const sign = amount < 0 ? '-' : ''
+  if (abs >= 100_000_000) return `${sign}${(abs / 100_000_000).toFixed(1)}억`
+  if (abs >= 10_000) return `${sign}${Math.round(abs / 10_000).toLocaleString()}만`
+  return `${sign}${abs.toLocaleString()}`
 }
 
-const statusLabels: Record<IdeaStatus, string> = {
-  active: '활성',
-  exited: '청산',
-  watching: '관찰',
+function daysAgo(dateString: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 86_400_000)
+  if (diff === 0) return '오늘'
+  if (diff === 1) return '어제'
+  if (diff < 7) return `${diff}일 전`
+  return new Date(dateString).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
 }
 
-const typeLabels: Record<IdeaType, string> = {
-  research: '리서치',
-  chart: '차트',
+/** "삼성전자(005930)" → "005930" */
+function extractStockCode(ticker: string): string | null {
+  const match = ticker.match(/\(([A-Za-z0-9]{6})\)$/)
+  return match ? match[1] : null
 }
 
-const healthBadge = (health: string, size: 'sm' | 'md' = 'sm') => {
-  const variants: Record<string, 'success' | 'warning' | 'danger'> = {
-    healthy: 'success',
-    deteriorating: 'warning',
-    broken: 'danger',
-  }
-  const labels: Record<string, string> = {
-    healthy: '건강',
-    deteriorating: '악화',
-    broken: '손상',
-  }
-  return variants[health] ? (
-    <Badge variant={variants[health]} size={size}>
-      {labels[health]}
-    </Badge>
-  ) : null
-}
-
-// thesis에서 이미지 URL 추출
-function extractImages(text: string): string[] {
-  const markdownImagePattern = /!\[.*?\]\((https?:\/\/[^\s)]+)\)/g
-  const plainUrlPattern = /(https?:\/\/[^\s<>]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg)(?:\?[^\s<>]*)?)/gi
-
-  const images: string[] = []
-  let match
-
-  while ((match = markdownImagePattern.exec(text)) !== null) {
-    images.push(match[1])
-  }
-
-  if (images.length === 0) {
-    while ((match = plainUrlPattern.exec(text)) !== null) {
-      images.push(match[0])
-    }
-  }
-
-  return images
-}
-
-// thesis에서 이미지 관련 텍스트 제거하고 순수 텍스트만 추출
-function extractText(text: string): string {
-  return text
-    .replace(/!\[.*?\]\([^)]+\)/g, '')
-    .replace(/(https?:\/\/[^\s<>]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg)(?:\?[^\s<>]*)?)/gi, '')
-    .replace(/\n+/g, ' ')
-    .trim()
-}
-
-// 뷰 모드 토글 버튼
-function ViewModeToggle({
-  viewMode,
-  onChange,
+/** 아이디어 종목별 가격 추이 바 (행 하단에 표시) */
+function StockTrendBar({
+  idea,
+  sparklineMap,
 }: {
-  viewMode: ViewMode
-  onChange: (mode: ViewMode) => void
+  idea: { tickers: string[]; created_at: string }
+  sparklineMap: SparklineMap
 }) {
+  const items = idea.tickers
+    .map((t) => {
+      const code = extractStockCode(t)
+      if (!code) return null
+      const sp = sparklineMap[code]
+      if (!sp) return null
+      const data = getSparklineSinceDate(sp, idea.created_at)
+      if (!data) return null
+      const name = sp.name || code
+      return { code, name, ...data }
+    })
+    .filter(Boolean) as { code: string; name: string; prices: number[]; changePct: number }[]
+
+  if (items.length === 0) return null
+
   return (
-    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-      <button
-        onClick={() => onChange('card')}
-        className={`p-1.5 rounded transition-colors ${
-          viewMode === 'card' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-        }`}
-        title="카드 보기"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-        </svg>
-      </button>
-      <button
-        onClick={() => onChange('list')}
-        className={`p-1.5 rounded transition-colors ${
-          viewMode === 'list' ? 'bg-white dark:bg-gray-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-        }`}
-        title="목록 보기"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+    <div className="flex items-center gap-3 px-4 pb-2 -mt-1">
+      {items.map((item) => {
+        const up = item.changePct >= 0
+        return (
+          <div key={item.code} className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-400 dark:text-t-text-muted">{item.name}</span>
+            <MiniSparkline prices={item.prices} width={48} height={18} />
+            <span
+              className={`text-[10px] font-mono font-bold ${
+                up ? 'text-red-500' : 'text-blue-500'
+              }`}
+            >
+              {up ? '+' : ''}
+              {item.changePct.toFixed(1)}%
+            </span>
+          </div>
+        )
+      })}
+      <span className="text-[9px] text-gray-300 dark:text-t-text-muted ml-auto">등록 이후</span>
     </div>
   )
 }
 
-// 카드 뷰 컴포넌트
-function IdeaCard({ idea }: { idea: Idea }) {
-  const images = useMemo(() => extractImages(idea.thesis), [idea.thesis])
-  const textContent = useMemo(() => extractText(idea.thesis), [idea.thesis])
-
-  return (
-    <Link to={`/ideas/${idea.id}`}>
-      <Card className="hover:shadow-md transition-shadow h-full">
-        <CardContent>
-          <div className="flex items-center justify-between mb-3">
-            <Badge variant={idea.type === 'research' ? 'info' : 'default'}>
-              {typeLabels[idea.type]}
-            </Badge>
-            {healthBadge(idea.fundamental_health)}
-          </div>
-
-          <div className="mb-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">종목:</span>
-            <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-              {idea.tickers.join(', ') || '-'}
-            </span>
-          </div>
-
-          {idea.sector && (
-            <div className="mb-2">
-              <span className="text-sm text-gray-500 dark:text-gray-400">섹터:</span>
-              <span className="ml-2 text-gray-900 dark:text-gray-100">{idea.sector}</span>
-            </div>
-          )}
-
-          {images.length > 0 && (
-            <div className="mb-3 -mx-2">
-              <img
-                src={images[0]}
-                alt="아이디어 이미지"
-                className="w-full h-32 object-cover rounded-lg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none'
-                }}
-              />
-            </div>
-          )}
-
-          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 mb-3">
-            {textContent || idea.thesis}
-          </p>
-
-          <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-            <span>목표: {Number(idea.target_return_pct)}%</span>
-            <span>기간: {idea.expected_timeframe_days}일</span>
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-            <Badge variant={idea.status === 'active' ? 'success' : 'default'}>
-              {statusLabels[idea.status]}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  )
+const HEALTH: Record<string, { dot: string; label: string; badge: string }> = {
+  healthy: {
+    dot: 'bg-emerald-500',
+    label: '건강',
+    badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+  },
+  deteriorating: {
+    dot: 'bg-amber-500',
+    label: '악화',
+    badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
+  },
+  broken: {
+    dot: 'bg-red-500',
+    label: '손상',
+    badge: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+  },
 }
 
-// 목록 뷰 컴포넌트
-function IdeaListItem({ idea }: { idea: Idea }) {
-  const images = useMemo(() => extractImages(idea.thesis), [idea.thesis])
-  const textContent = useMemo(() => extractText(idea.thesis), [idea.thesis])
+// ─── Collapsible Section ───
 
-  return (
-    <Link to={`/ideas/${idea.id}`}>
-      <div className="flex gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-        {images.length > 0 && (
-          <div className="flex-shrink-0">
-            <img
-              src={images[0]}
-              alt="아이디어 이미지"
-              className="w-20 h-20 object-cover rounded-lg"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none'
-              }}
-            />
-          </div>
-        )}
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <Badge variant={idea.type === 'research' ? 'info' : 'default'} size="sm">
-              {typeLabels[idea.type]}
-            </Badge>
-            <span className="font-semibold text-base truncate text-gray-900 dark:text-gray-100">
-              {idea.tickers.join(', ') || '종목 미지정'}
-            </span>
-            {idea.sector && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">({idea.sector})</span>
-            )}
-            {healthBadge(idea.fundamental_health, 'sm')}
-            <Badge variant={idea.status === 'active' ? 'success' : 'default'} size="sm">
-              {statusLabels[idea.status]}
-            </Badge>
-          </div>
-
-          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1 mb-2">{textContent || idea.thesis}</p>
-
-          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-            <span>목표: {Number(idea.target_return_pct)}%</span>
-            <span>기간: {idea.expected_timeframe_days}일</span>
-            <span className="text-gray-400 dark:text-gray-500">
-              {new Date(idea.created_at).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-// 수동 아이디어 목록 (기존)
-function ManualIdeaList() {
-  const { ideas, loading, error, fetchIdeas } = useIdeaStore()
-  const [filterStatus, setFilterStatus] = useState<string>('')
-  const [filterType, setFilterType] = useState<string>('')
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = localStorage.getItem('idea-list-view-mode')
-    return (saved as ViewMode) || 'card'
-  })
-
-  useEffect(() => {
-    const params: { status?: string; type?: string } = {}
-    if (filterStatus) params.status = filterStatus
-    if (filterType) params.type = filterType
-    fetchIdeas(params)
-  }, [fetchIdeas, filterStatus, filterType])
-
-  useEffect(() => {
-    localStorage.setItem('idea-list-view-mode', viewMode)
-  }, [viewMode])
-
-  if (loading) {
-    return <div className="text-center py-10 text-gray-500 dark:text-gray-400">로딩 중...</div>
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-600 dark:text-red-400">{error}</div>
-  }
-
+function Section({
+  title,
+  count,
+  dotColor,
+  expanded,
+  onToggle,
+  header,
+  children,
+  emptyText,
+}: {
+  title: string
+  count: number
+  dotColor: string
+  expanded: boolean
+  onToggle: () => void
+  header?: ReactNode
+  children: ReactNode
+  emptyText?: string
+}) {
   return (
     <div>
-      <div className="flex items-center gap-4 mb-6">
-        <Select
-          options={[
-            { value: '', label: '모든 상태' },
-            { value: 'active', label: '활성' },
-            { value: 'watching', label: '관찰' },
-            { value: 'exited', label: '청산' },
-          ]}
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        />
-        <Select
-          options={[
-            { value: '', label: '모든 유형' },
-            { value: 'research', label: '리서치' },
-            { value: 'chart', label: '차트' },
-          ]}
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-        />
-        <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
-      </div>
-
-      {ideas.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-          아이디어가 없습니다. 새로운 아이디어를 추가해보세요.
+      <button onClick={onToggle} className="w-full flex items-center justify-between py-2 px-1">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${dotColor}`} />
+          <span className="text-sm font-semibold text-gray-700 dark:text-t-text-secondary">
+            {title}
+          </span>
+          <span className="text-[10px] text-gray-400 dark:text-t-text-muted bg-gray-100 dark:bg-t-bg-elevated px-1.5 py-0.5 rounded-full font-mono">
+            {count}
+          </span>
         </div>
-      ) : viewMode === 'card' ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {ideas.map((idea: Idea) => (
-            <IdeaCard key={idea.id} idea={idea} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {ideas.map((idea: Idea) => (
-            <IdeaListItem key={idea.id} idea={idea} />
-          ))}
+        <svg
+          className={`w-4 h-4 text-gray-400 dark:text-t-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="bg-white dark:bg-t-bg-card rounded-lg border border-gray-200 dark:border-t-border overflow-hidden">
+          {header}
+          {count === 0 && emptyText ? (
+            <div className="text-center py-6 text-sm text-gray-400 dark:text-t-text-muted">
+              {emptyText}
+            </div>
+          ) : (
+            children
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// 탭 컴포넌트
-function Tab({
-  label,
-  active,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-        active
-          ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
-          : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-      }`}
-    >
-      {label}
-    </button>
-  )
-}
+// ─── Column Headers ───
 
-// 로딩 스피너
-function LoadingSpinner() {
+function ActiveHeader() {
   return (
-    <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-      로딩 중...
+    <div className="flex items-center gap-3 px-4 py-1.5 bg-gray-50/80 dark:bg-t-bg-elevated/20 text-[10px] uppercase tracking-wider text-gray-400 dark:text-t-text-muted border-b border-gray-100 dark:border-t-border">
+      <div className="w-2" />
+      <div className="flex-1 min-w-0">종목</div>
+      <div className="w-20 lg:w-24 text-right">수익률</div>
+      <div className="w-14 text-right">잔여</div>
+      <div className="w-[72px] text-right">매매</div>
     </div>
   )
 }
 
+function WatchingHeader() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-1.5 bg-gray-50/80 dark:bg-t-bg-elevated/20 text-[10px] uppercase tracking-wider text-gray-400 dark:text-t-text-muted border-b border-gray-100 dark:border-t-border">
+      <div className="w-2" />
+      <div className="flex-1 min-w-0">종목</div>
+      <div className="hidden md:block w-12">건강</div>
+      <div className="text-right">목표</div>
+      <div className="hidden lg:block w-14 text-right">등록</div>
+    </div>
+  )
+}
+
+// ─── Row: Active Idea (with P&L + trade buttons) ───
+
+function ActiveRow({
+  idea,
+  onAction,
+  sparklineMap,
+}: {
+  idea: IdeaSummary
+  onAction: (idea: IdeaSummary, action: TradeAction) => void
+  sparklineMap: SparklineMap
+}) {
+  const [showSellMenu, setShowSellMenu] = useState(false)
+  const openPos = idea.positions.filter((p) => p.is_open)
+  const totalQty = openPos.reduce((s, p) => s + p.quantity, 0)
+  const pct = idea.total_unrealized_return_pct
+  const up = (pct ?? 0) >= 0
+  const h = HEALTH[idea.fundamental_health]
+
+  const fire = (e: React.MouseEvent, action: TradeAction) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowSellMenu(false)
+    onAction(idea, action)
+  }
+
+  return (
+    <div className="border-b border-gray-50 dark:border-t-border/50 last:border-b-0">
+    <Link
+      to={`/ideas/${idea.id}`}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 transition-colors"
+    >
+      {/* Health dot */}
+      <div
+        className={`w-2 h-2 rounded-full flex-shrink-0 ${h?.dot ?? 'bg-gray-400'}`}
+        title={h?.label}
+      />
+
+      {/* Ticker + type + qty */}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-gray-900 dark:text-t-text-primary truncate">
+          {idea.tickers.join(', ') || '미지정'}
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          <span
+            className={`text-[10px] leading-tight px-1 rounded ${
+              idea.type === 'research'
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                : 'bg-gray-50 dark:bg-t-bg-elevated text-gray-500 dark:text-t-text-muted'
+            }`}
+          >
+            {idea.type === 'research' ? '리서치' : '차트'}
+          </span>
+          {idea.sector && (
+            <span className="text-[10px] text-gray-400 dark:text-t-text-muted truncate">
+              {idea.sector}
+            </span>
+          )}
+          {totalQty > 0 && (
+            <span className="text-[10px] font-mono text-gray-400 dark:text-t-text-muted">
+              {totalQty}주
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* P&L */}
+      <div className="w-20 lg:w-24 flex-shrink-0 text-right">
+        {pct != null ? (
+          <>
+            <div className={`text-sm font-bold font-mono ${up ? 'text-red-500' : 'text-blue-500'}`}>
+              {up ? '+' : ''}
+              {pct.toFixed(1)}%
+            </div>
+            {(idea.total_invested ?? 0) > 0 && (
+              <div className={`text-[10px] font-mono ${up ? 'text-red-400' : 'text-blue-400'}`}>
+                {formatMoney(idea.total_invested ?? 0)}
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="text-xs text-gray-300 dark:text-t-text-muted">-</span>
+        )}
+      </div>
+
+      {/* Time remaining */}
+      <div className="w-14 flex-shrink-0 text-right">
+        <span
+          className={`text-[11px] font-mono ${
+            idea.time_remaining_days <= 0
+              ? 'text-red-500 font-bold'
+              : idea.time_remaining_days <= 5
+                ? 'text-amber-500'
+                : 'text-gray-400 dark:text-t-text-muted'
+          }`}
+        >
+          {idea.time_remaining_days <= 0 ? '만료' : `D-${idea.time_remaining_days}`}
+        </span>
+      </div>
+
+      {/* Trade buttons */}
+      <div
+        className="w-[72px] flex-shrink-0 flex items-center justify-end gap-1"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+      >
+        <button
+          onClick={(e) => fire(e, 'buy')}
+          className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+        >
+          매수
+        </button>
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowSellMenu(!showSellMenu)
+            }}
+            className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            매도
+          </button>
+          {showSellMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowSellMenu(false)
+                }}
+              />
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-t-bg-elevated border border-gray-200 dark:border-t-border rounded-lg shadow-lg overflow-hidden min-w-[80px]">
+                <button
+                  onClick={(e) => fire(e, 'exit')}
+                  className="w-full px-3 py-1.5 text-[11px] text-left text-gray-700 dark:text-t-text-secondary hover:bg-gray-50 dark:hover:bg-t-bg-card transition-colors"
+                >
+                  전량매도
+                </button>
+                <button
+                  onClick={(e) => fire(e, 'partial-exit')}
+                  className="w-full px-3 py-1.5 text-[11px] text-left text-gray-700 dark:text-t-text-secondary hover:bg-gray-50 dark:hover:bg-t-bg-card transition-colors border-t border-gray-100 dark:border-t-border"
+                >
+                  분할매도
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </Link>
+    <StockTrendBar idea={idea} sparklineMap={sparklineMap} />
+    </div>
+  )
+}
+
+// ─── Row: Watching Idea ───
+
+function WatchingRow({ idea, sparklineMap }: { idea: IdeaSummary; sparklineMap: SparklineMap }) {
+  const h = HEALTH[idea.fundamental_health]
+
+  return (
+    <div className="border-b border-gray-50 dark:border-t-border/50 last:border-b-0">
+    <Link
+      to={`/ideas/${idea.id}`}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 transition-colors"
+    >
+      <div className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-400" />
+
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-gray-900 dark:text-t-text-primary truncate">
+          {idea.tickers.join(', ') || '미지정'}
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          <span
+            className={`text-[10px] leading-tight px-1 rounded ${
+              idea.type === 'research'
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                : 'bg-gray-50 dark:bg-t-bg-elevated text-gray-500 dark:text-t-text-muted'
+            }`}
+          >
+            {idea.type === 'research' ? '리서치' : '차트'}
+          </span>
+          {idea.sector && (
+            <span className="text-[10px] text-gray-400 dark:text-t-text-muted truncate">
+              {idea.sector}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Health badge */}
+      <div className="hidden md:block w-12 flex-shrink-0">
+        {h && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${h.badge}`}>{h.label}</span>
+        )}
+      </div>
+
+      {/* Target return */}
+      <div className="text-right flex-shrink-0">
+        <span className="text-sm font-mono text-amber-600 dark:text-amber-400 font-semibold">
+          {Number(idea.target_return_pct)}%
+        </span>
+      </div>
+
+      {/* Created date */}
+      <div className="hidden lg:block w-14 flex-shrink-0 text-right text-[11px] text-gray-400 dark:text-t-text-muted">
+        {daysAgo(idea.created_at)}
+      </div>
+    </Link>
+    <StockTrendBar idea={idea} sparklineMap={sparklineMap} />
+    </div>
+  )
+}
+
+// ─── Row: Exited Idea ───
+
+function ExitedRow({ idea }: { idea: Idea }) {
+  return (
+    <Link
+      to={`/ideas/${idea.id}`}
+      className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-t-bg-elevated/50 transition-colors border-b border-gray-50 dark:border-t-border/50 last:border-b-0 opacity-50 hover:opacity-100"
+    >
+      <div className="w-2 h-2 rounded-full flex-shrink-0 bg-gray-300 dark:bg-gray-600" />
+
+      <div className="flex-1 min-w-0">
+        <span className="text-sm text-gray-500 dark:text-t-text-muted truncate block">
+          {idea.tickers.join(', ') || '미지정'}
+        </span>
+      </div>
+
+      <span
+        className={`text-[10px] leading-tight px-1 rounded flex-shrink-0 ${
+          idea.type === 'research'
+            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-500 dark:text-blue-400'
+            : 'bg-gray-50 dark:bg-t-bg-elevated text-gray-400 dark:text-t-text-muted'
+        }`}
+      >
+        {idea.type === 'research' ? '리서치' : '차트'}
+      </span>
+
+      <span className="text-[11px] text-gray-400 dark:text-t-text-muted flex-shrink-0">
+        {daysAgo(idea.updated_at)}
+      </span>
+    </Link>
+  )
+}
+
+// ─── Portfolio View ───
+
+function PortfolioView() {
+  const { dashboard, loading, fetchDashboard } = useIdeaStore()
+  const [exitedIdeas, setExitedIdeas] = useState<Idea[]>([])
+  const [sparklineMap, setSparklineMap] = useState<SparklineMap>({})
+  const [sections, setSections] = useState({ active: true, watching: true, exited: false })
+  const [modalState, setModalState] = useState<{
+    type: TradeAction | null
+    idea: IdeaSummary | null
+    position: Position | null
+  }>({ type: null, idea: null, position: null })
+
+  useEffect(() => {
+    fetchDashboard()
+    ideaApi.list({ status: 'exited' }).then(setExitedIdeas).catch(() => {})
+    ideaApi.getStockSparklines().then(setSparklineMap).catch((e) => console.warn('스파크라인 조회 실패:', e))
+  }, [fetchDashboard])
+
+  const silentRefetch = useCallback(async () => {
+    try {
+      await fetchDashboard()
+      const sp = await ideaApi.getStockSparklines()
+      setSparklineMap(sp)
+    } catch { /* 조용히 실패 */ }
+  }, [fetchDashboard])
+
+  useRealtimePolling(silentRefetch, 30_000, {
+    onlyMarketHours: true,
+    enabled: !!dashboard,
+  })
+
+  const activeIdeas = useMemo(() => {
+    if (!dashboard) return []
+    return [...dashboard.research_ideas, ...dashboard.chart_ideas]
+  }, [dashboard])
+
+  const watchingIdeas = dashboard?.watching_ideas ?? []
+  const stats = dashboard?.stats
+  const toggle = (k: 'active' | 'watching' | 'exited') =>
+    setSections((p) => ({ ...p, [k]: !p[k] }))
+
+  // ─── Trade action handlers ───
+
+  const handleAction = useCallback((idea: IdeaSummary, action: TradeAction) => {
+    const openPos = idea.positions.filter((p) => p.is_open !== false)
+    setModalState({ type: action, idea, position: openPos[0] || null })
+  }, [])
+
+  const closeModal = useCallback(() => {
+    setModalState({ type: null, idea: null, position: null })
+  }, [])
+
+  const handleNewPosition = useCallback(
+    async (form: PositionCreate) => {
+      if (!modalState.idea) return
+      await ideaApi.createPosition(modalState.idea.id, form)
+      closeModal()
+      fetchDashboard()
+    },
+    [modalState.idea, closeModal, fetchDashboard],
+  )
+
+  const handleAddBuy = useCallback(
+    async (form: PositionAddBuy) => {
+      if (!modalState.position) return
+      await positionApi.addBuy(modalState.position.id, form)
+      closeModal()
+      fetchDashboard()
+    },
+    [modalState.position, closeModal, fetchDashboard],
+  )
+
+  const handleExit = useCallback(
+    async (form: PositionExit) => {
+      if (!modalState.position) return
+      await positionApi.exit(modalState.position.id, form)
+      closeModal()
+      fetchDashboard()
+    },
+    [modalState.position, closeModal, fetchDashboard],
+  )
+
+  const handlePartialExit = useCallback(
+    async (form: PositionPartialExit) => {
+      const pos = modalState.position
+      if (!pos) {
+        // fallback: 첫 번째 오픈 포지션 사용
+        const openPos = modalState.idea?.positions.filter((p) => p.is_open !== false)
+        if (!openPos?.length) return
+        await positionApi.partialExit(openPos[0].id, form)
+      } else {
+        await positionApi.partialExit(pos.id, form)
+      }
+      closeModal()
+      fetchDashboard()
+    },
+    [modalState.position, modalState.idea, closeModal, fetchDashboard],
+  )
+
+  if (loading && !dashboard) return <IdeaListSkeleton />
+
+  const totalPnl = stats?.total_unrealized_return ?? 0
+  const pnlPct = stats?.avg_return_pct ?? 0
+  const pnlUp = pnlPct >= 0
+
+  return (
+    <div>
+      {/* Summary stats bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white dark:bg-t-bg-card rounded-lg border border-gray-200 dark:border-t-border p-3">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-t-text-muted mb-1">
+            활성
+          </div>
+          <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            {stats?.active_ideas ?? 0}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-t-bg-card rounded-lg border border-gray-200 dark:border-t-border p-3">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-t-text-muted mb-1">
+            관찰
+          </div>
+          <div className="text-lg font-bold font-mono text-amber-600 dark:text-amber-400">
+            {stats?.watching_ideas ?? 0}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-t-bg-card rounded-lg border border-gray-200 dark:border-t-border p-3">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-t-text-muted mb-1">
+            투자금
+          </div>
+          <div className="text-lg font-bold font-mono text-gray-900 dark:text-t-text-primary">
+            {formatMoney(stats?.total_invested ?? 0)}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-t-bg-card rounded-lg border border-gray-200 dark:border-t-border p-3">
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-t-text-muted mb-1">
+            총 손익
+          </div>
+          <div className={`text-lg font-bold font-mono ${pnlUp ? 'text-red-500' : 'text-blue-500'}`}>
+            {pnlUp ? '+' : ''}
+            {pnlPct.toFixed(1)}%
+          </div>
+          <div className={`text-[10px] font-mono ${pnlUp ? 'text-red-400' : 'text-blue-400'}`}>
+            {pnlUp ? '+' : ''}
+            {formatMoney(totalPnl)}원
+          </div>
+        </div>
+      </div>
+
+      {/* Side-by-side: Active + Watching */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <Section
+          title="활성 포지션"
+          count={activeIdeas.length}
+          dotColor="bg-emerald-500"
+          expanded={sections.active}
+          onToggle={() => toggle('active')}
+          header={activeIdeas.length > 0 ? <ActiveHeader /> : undefined}
+          emptyText="활성 아이디어가 없습니다"
+        >
+          {activeIdeas.map((idea) => (
+            <ActiveRow key={idea.id} idea={idea} onAction={handleAction} sparklineMap={sparklineMap} />
+          ))}
+        </Section>
+
+        <Section
+          title="관찰 중"
+          count={watchingIdeas.length}
+          dotColor="bg-amber-400"
+          expanded={sections.watching}
+          onToggle={() => toggle('watching')}
+          header={watchingIdeas.length > 0 ? <WatchingHeader /> : undefined}
+          emptyText="관찰 중인 아이디어가 없습니다"
+        >
+          {watchingIdeas.map((idea) => (
+            <WatchingRow key={idea.id} idea={idea} sparklineMap={sparklineMap} />
+          ))}
+        </Section>
+      </div>
+
+      {/* Exited section (full width, collapsed) */}
+      {exitedIdeas.length > 0 && (
+        <Section
+          title="청산 완료"
+          count={exitedIdeas.length}
+          dotColor="bg-gray-400"
+          expanded={sections.exited}
+          onToggle={() => toggle('exited')}
+        >
+          {exitedIdeas.map((idea) => (
+            <ExitedRow key={idea.id} idea={idea} />
+          ))}
+        </Section>
+      )}
+
+      {/* Empty state */}
+      {activeIdeas.length === 0 &&
+        watchingIdeas.length === 0 &&
+        exitedIdeas.length === 0 &&
+        !loading && (
+          <div className="text-center py-16">
+            <div className="text-gray-400 dark:text-t-text-muted text-lg mb-2">
+              아이디어가 없습니다
+            </div>
+            <p className="text-sm text-gray-400 dark:text-t-text-muted">
+              새로운 아이디어를 추가해보세요.
+            </p>
+          </div>
+        )}
+
+      {/* ─── Trade Modals ─── */}
+      {modalState.type === 'buy' && modalState.position && (
+        <AddBuyModal
+          isOpen
+          onClose={closeModal}
+          onSubmit={handleAddBuy}
+          position={modalState.position}
+        />
+      )}
+      {modalState.type === 'buy' && !modalState.position && (
+        <AddPositionModal isOpen onClose={closeModal} onSubmit={handleNewPosition} tickers={modalState.idea?.tickers} />
+      )}
+      {modalState.type === 'exit' && (
+        <ExitPositionModal isOpen onClose={closeModal} onSubmit={handleExit} />
+      )}
+      {modalState.type === 'partial-exit' && (
+        <PartialExitModal
+          isOpen
+          onClose={closeModal}
+          onSubmit={handlePartialExit}
+          position={modalState.position}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Loading Spinner ───
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="flex items-center gap-2 text-gray-400 dark:text-t-text-muted">
+        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <span className="text-sm">로딩 중...</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ───
+
 export default function IdeaList() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const features = useFeatureFlags()
 
-  // URL에서 탭 상태 읽기
+  const visibleTabs = useMemo(() => {
+    if (features.telegram) return TAB_CONFIG
+    return TAB_CONFIG.filter(t => t.key !== 'telegram')
+  }, [features.telegram])
+
   const activeTab = useMemo<TabType>(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['unified', 'manual', 'telegram', 'analytics'].includes(tabParam)) {
+    if (tabParam && ['portfolio', 'telegram', 'analytics'].includes(tabParam)) {
+      if (tabParam === 'telegram' && !features.telegram) return 'portfolio'
       return tabParam as TabType
     }
-    // localStorage fallback
+    if (tabParam === 'unified' || tabParam === 'manual') return 'portfolio'
+
     const saved = localStorage.getItem('idea-list-active-tab')
-    if (saved && ['unified', 'manual', 'telegram', 'analytics'].includes(saved)) {
+    if (saved === 'unified' || saved === 'manual') return 'portfolio'
+    if (saved && ['portfolio', 'telegram', 'analytics'].includes(saved)) {
+      if (saved === 'telegram' && !features.telegram) return 'portfolio'
       return saved as TabType
     }
-    return 'unified'
-  }, [searchParams])
+    return 'portfolio'
+  }, [searchParams, features.telegram])
 
   const setActiveTab = (tab: TabType) => {
     setSearchParams({ tab })
@@ -364,26 +757,38 @@ export default function IdeaList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">아이디어</h1>
+      {/* Header + Tab bar */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-t-text-primary">아이디어</h1>
+
+        <div className="flex items-center bg-gray-100 dark:bg-t-bg-elevated rounded-xl p-1 gap-0.5">
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.key
+                  ? 'bg-white dark:bg-t-border text-gray-900 dark:text-t-text-primary shadow-sm'
+                  : 'text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d={tab.iconPath}
+                />
+              </svg>
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 탭 */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-        {(Object.keys(TAB_LABELS) as TabType[]).map((tab) => (
-          <Tab
-            key={tab}
-            label={TAB_LABELS[tab]}
-            active={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-          />
-        ))}
-      </div>
-
-      {/* 탭 내용 */}
+      {/* Tab content */}
       <Suspense fallback={<LoadingSpinner />}>
-        {activeTab === 'unified' && <UnifiedIdeaList />}
-        {activeTab === 'manual' && <ManualIdeaList />}
+        {activeTab === 'portfolio' && <PortfolioView />}
         {activeTab === 'telegram' && <TelegramIdeaList showSourceFilter />}
         {activeTab === 'analytics' && <IdeaAnalytics />}
       </Suspense>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { themeSetupApi } from '../../services/api'
+import { useFeatureFlags } from '../../hooks/useFeatureFlags'
 import { Card } from '../../components/ui/Card'
 import { useDataStore } from '../../store/useDataStore'
 import type { ThemeSetup, EmergingThemesResponse } from '../../types/theme_setup'
@@ -8,8 +9,9 @@ import { PATTERN_TYPE_LABELS, PATTERN_TYPE_COLORS } from '../../types/theme_setu
 
 export default function EmergingThemes() {
   const navigate = useNavigate()
+  const features = useFeatureFlags()
   const [data, setData] = useState<EmergingThemesResponse | null>(null)
-  const [rankTrend, setRankTrend] = useState<{
+  const [_rankTrend, setRankTrend] = useState<{
     dates: string[]
     themes: Array<{ name: string; data: Array<{ date: string; rank: number; score: number }> }>
   } | null>(null)
@@ -116,12 +118,12 @@ export default function EmergingThemes() {
     useDataStore.setState({ themeCalculating: true })
     try {
       await themeSetupApi.calculate()
-      await fetchData()
     } catch (err) {
       console.error('셋업 계산 실패:', err)
       alert('셋업 계산 실패')
     } finally {
       useDataStore.setState({ themeCalculating: false })
+      await fetchData()
     }
   }
 
@@ -151,7 +153,11 @@ export default function EmergingThemes() {
     useDataStore.setState({ themeCollectingFlow: true })
     try {
       const result = await themeSetupApi.collectInvestorFlow()
-      alert(`수급 수집 완료: ${result.collected_count}개 종목`)
+      const skipped = (result as any).skipped_stocks || 0
+      const msg = skipped > 0
+        ? `수급 수집 완료: ${result.collected_count}개 수집, ${skipped}개 이미 수집됨 (건너뜀)`
+        : `수급 수집 완료: ${result.collected_count}개 종목`
+      alert(msg)
       await fetchData()
     } catch (err) {
       console.error('수급 수집 실패:', err)
@@ -165,14 +171,14 @@ export default function EmergingThemes() {
     if (score >= 70) return 'text-red-500'
     if (score >= 50) return 'text-orange-500'
     if (score >= 35) return 'text-yellow-600'
-    return 'text-gray-500'
+    return 'text-gray-500 dark:text-t-text-muted'
   }
 
   const getScoreBg = (score: number): string => {
-    if (score >= 70) return 'bg-red-50 border-red-200'
-    if (score >= 50) return 'bg-orange-50 border-orange-200'
-    if (score >= 35) return 'bg-yellow-50 border-yellow-200'
-    return 'bg-gray-50 border-gray-200'
+    if (score >= 70) return 'bg-red-50 dark:bg-red-900/20 border-red-200'
+    if (score >= 50) return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+    if (score >= 35) return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200'
+    return 'bg-gray-50 dark:bg-t-bg-elevated border-gray-200 dark:border-t-border'
   }
 
   const getProgressWidth = (score: number, max: number): string => {
@@ -186,7 +192,7 @@ export default function EmergingThemes() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Emerging Themes</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-t-text-muted mt-1">
             자리를 만들고 있는 테마 - 뉴스 + 차트 패턴 + 언급 데이터 종합 분석
           </p>
         </div>
@@ -194,7 +200,7 @@ export default function EmergingThemes() {
           <select
             value={minScore}
             onChange={(e) => setMinScore(Number(e.target.value))}
-            className="text-sm border rounded px-2 py-1"
+            className="text-sm border rounded px-2 py-1 bg-white dark:bg-t-bg-elevated dark:border-t-border-hover dark:text-t-text-primary"
           >
             <option value={20}>20점 이상</option>
             <option value={30}>30점 이상</option>
@@ -227,8 +233,8 @@ export default function EmergingThemes() {
 
       {/* 에러 */}
       {error && (
-        <Card className="p-4 bg-red-50 border-red-200">
-          <p className="text-sm text-red-700">{error}</p>
+        <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
         </Card>
       )}
 
@@ -236,21 +242,21 @@ export default function EmergingThemes() {
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">이머징 테마</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">이머징 테마</p>
             <p className="text-2xl font-bold text-blue-600">{data.total_count}개</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">1위 테마</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">1위 테마</p>
             <p className="text-lg font-bold text-red-600 truncate">
               {data.themes[0]?.theme_name || '-'}
             </p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">1위 점수</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">1위 점수</p>
             <p className="text-2xl font-bold">{data.themes[0]?.total_score.toFixed(1) || '-'}</p>
           </Card>
           <Card className="p-4 text-center">
-            <p className="text-sm text-gray-500">분석 시간</p>
+            <p className="text-sm text-gray-500 dark:text-t-text-muted">분석 시간</p>
             <p className="text-sm font-medium">
               {new Date(data.generated_at).toLocaleTimeString('ko-KR', {
                 hour: '2-digit',
@@ -265,8 +271,8 @@ export default function EmergingThemes() {
       {loading ? (
         <Card className="p-8 text-center">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/3 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 dark:bg-t-border rounded w-1/2 mx-auto"></div>
           </div>
         </Card>
       ) : data && data.themes.length > 0 ? (
@@ -284,15 +290,15 @@ export default function EmergingThemes() {
           ))}
         </div>
       ) : (
-        <Card className="p-8 text-center text-gray-500">
+        <Card className="p-8 text-center text-gray-500 dark:text-t-text-muted">
           조건에 맞는 이머징 테마가 없습니다.
         </Card>
       )}
 
       {/* 점수 산정 기준 */}
       <Card className="p-4">
-        <h3 className="text-sm font-medium text-gray-600 mb-2">셋업 점수 산정 기준 (100점 만점)</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-gray-500">
+        <h3 className="text-sm font-medium text-gray-600 dark:text-t-text-muted mb-2">셋업 점수 산정 기준 (100점 만점)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-gray-500 dark:text-t-text-muted">
           <div>
             <span className="font-medium text-blue-600">뉴스 (25%)</span>
             <p className="text-xs">7일 뉴스 수 + WoW + 출처</p>
@@ -303,7 +309,7 @@ export default function EmergingThemes() {
           </div>
           <div>
             <span className="font-medium text-purple-600">언급 (20%)</span>
-            <p className="text-xs">YouTube + 트레이더</p>
+            <p className="text-xs">YouTube{features.expert ? ' + 전문가' : ''}</p>
           </div>
           <div>
             <span className="font-medium text-cyan-600">수급 (15%)</span>
@@ -351,12 +357,12 @@ function ThemeSetupCard({
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-lg">{theme.theme_name}</h3>
               {theme.is_emerging === 1 && (
-                <span className="px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded">
+                <span className="px-1.5 py-0.5 text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded">
                   Emerging
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-t-text-muted mt-1">
               <span>
                 {theme.stocks_with_pattern}/{theme.total_stocks}개 종목 패턴 감지
               </span>
@@ -374,60 +380,60 @@ function ThemeSetupCard({
       {/* 점수 breakdown 바 */}
       <div className="mt-4 space-y-2">
         <div className="flex items-center gap-2 text-xs">
-          <span className="w-12 text-gray-500">뉴스</span>
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <span className="w-12 text-gray-500 dark:text-t-text-muted">뉴스</span>
+          <div className="flex-1 h-2 bg-gray-100 dark:bg-t-bg-elevated rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-400 rounded-full"
               style={{ width: getProgressWidth(theme.news_momentum_score, 25) }}
             />
           </div>
-          <span className="w-10 text-right text-gray-600">{theme.news_momentum_score.toFixed(1)}</span>
+          <span className="w-10 text-right text-gray-600 dark:text-t-text-muted">{theme.news_momentum_score.toFixed(1)}</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="w-12 text-gray-500">차트</span>
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <span className="w-12 text-gray-500 dark:text-t-text-muted">차트</span>
+          <div className="flex-1 h-2 bg-gray-100 dark:bg-t-bg-elevated rounded-full overflow-hidden">
             <div
               className="h-full bg-green-400 rounded-full"
               style={{ width: getProgressWidth(theme.chart_pattern_score, 30) }}
             />
           </div>
-          <span className="w-10 text-right text-gray-600">{theme.chart_pattern_score.toFixed(1)}</span>
+          <span className="w-10 text-right text-gray-600 dark:text-t-text-muted">{theme.chart_pattern_score.toFixed(1)}</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="w-12 text-gray-500">언급</span>
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <span className="w-12 text-gray-500 dark:text-t-text-muted">언급</span>
+          <div className="flex-1 h-2 bg-gray-100 dark:bg-t-bg-elevated rounded-full overflow-hidden">
             <div
               className="h-full bg-purple-400 rounded-full"
               style={{ width: getProgressWidth(theme.mention_score, 20) }}
             />
           </div>
-          <span className="w-10 text-right text-gray-600">{theme.mention_score.toFixed(1)}</span>
+          <span className="w-10 text-right text-gray-600 dark:text-t-text-muted">{theme.mention_score.toFixed(1)}</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="w-12 text-gray-500">수급</span>
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <span className="w-12 text-gray-500 dark:text-t-text-muted">수급</span>
+          <div className="flex-1 h-2 bg-gray-100 dark:bg-t-bg-elevated rounded-full overflow-hidden">
             <div
               className="h-full bg-cyan-400 rounded-full"
               style={{ width: getProgressWidth(theme.investor_flow_score || 0, 15) }}
             />
           </div>
-          <span className="w-10 text-right text-gray-600">{(theme.investor_flow_score || 0).toFixed(1)}</span>
+          <span className="w-10 text-right text-gray-600 dark:text-t-text-muted">{(theme.investor_flow_score || 0).toFixed(1)}</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="w-12 text-gray-500">가격</span>
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <span className="w-12 text-gray-500 dark:text-t-text-muted">가격</span>
+          <div className="flex-1 h-2 bg-gray-100 dark:bg-t-bg-elevated rounded-full overflow-hidden">
             <div
               className="h-full bg-orange-400 rounded-full"
               style={{ width: getProgressWidth(theme.price_action_score, 10) }}
             />
           </div>
-          <span className="w-10 text-right text-gray-600">{theme.price_action_score.toFixed(1)}</span>
+          <span className="w-10 text-right text-gray-600 dark:text-t-text-muted">{theme.price_action_score.toFixed(1)}</span>
         </div>
       </div>
 
       {/* 점수 설명 */}
       {theme.explanation && (
-        <div className="mt-3 p-2 bg-white/50 rounded text-xs text-gray-600">
+        <div className="mt-3 p-2 bg-white dark:bg-t-bg-card/50 rounded text-xs text-gray-600 dark:text-t-text-muted">
           <span className="text-gray-400 mr-1">요약:</span>
           {theme.explanation}
         </div>
@@ -435,25 +441,25 @@ function ThemeSetupCard({
 
       {/* 확장 시 상위 종목 */}
       {expanded && theme.top_stocks.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <h4 className="text-sm font-medium text-gray-600 mb-2">패턴 감지 종목</h4>
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-t-border">
+          <h4 className="text-sm font-medium text-gray-600 dark:text-t-text-muted mb-2">패턴 감지 종목</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
             {theme.top_stocks.map((stock) => (
               <div
                 key={stock.code}
-                className="p-2 bg-white rounded border border-gray-100 text-sm"
+                className="p-2 bg-white dark:bg-t-bg-card rounded border border-gray-100 dark:border-t-border/50 text-sm"
               >
                 <div className="font-medium truncate">{stock.name}</div>
-                <div className="text-xs text-gray-500">{stock.code}</div>
+                <div className="text-xs text-gray-500 dark:text-t-text-muted">{stock.code}</div>
                 <div className="flex justify-between items-center mt-1">
                   <span
                     className={`text-xs px-1.5 py-0.5 rounded ${
-                      PATTERN_TYPE_COLORS[stock.pattern] || 'bg-gray-100 text-gray-600'
+                      PATTERN_TYPE_COLORS[stock.pattern] || 'bg-gray-100 dark:bg-t-bg-elevated text-gray-600 dark:text-t-text-muted'
                     }`}
                   >
                     {PATTERN_TYPE_LABELS[stock.pattern] || stock.pattern}
                   </span>
-                  <span className="text-xs text-gray-500">{stock.confidence}%</span>
+                  <span className="text-xs text-gray-500 dark:text-t-text-muted">{stock.confidence}%</span>
                 </div>
               </div>
             ))}

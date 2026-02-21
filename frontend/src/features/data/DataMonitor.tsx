@@ -22,7 +22,7 @@ export default function DataMonitor() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">데이터 모니터링</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-t-text-primary">데이터 모니터링</h1>
 
       {/* 통합 데이터 수집 현황 (새로고침 기능 포함) */}
       <UnifiedDataDashboard />

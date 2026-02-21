@@ -38,7 +38,7 @@ class ThemeSetup(Base):
     # {
     #   "news": {"7d_count": 15, "wow_change": 50, "source_diversity": 5},
     #   "chart": {"pattern_ratio": 0.4, "avg_confidence": 75, "patterns": ["double_bottom", "converging"]},
-    #   "mention": {"youtube_count": 3, "trader_count": 2},
+    #   "mention": {"youtube_count": 3, "expert_count": 2},
     #   "price": {"7d_avg_change": 2.5, "volume_change": 30},
     #   "flow": {"foreign_net_sum": 1000000, "institution_net_sum": 500000, "positive_stocks": 5, "total_stocks": 10}
     # }

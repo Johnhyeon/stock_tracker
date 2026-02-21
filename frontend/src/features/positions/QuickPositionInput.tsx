@@ -190,7 +190,7 @@ export default function QuickPositionInput() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               mode === m
                 ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-t-bg-elevated text-gray-700 dark:text-t-text-secondary hover:bg-gray-200 dark:hover:bg-t-border dark:bg-t-border'
             }`}
           >
             {m === 'quick' && '빠른 입력'}
@@ -203,7 +203,7 @@ export default function QuickPositionInput() {
 
       {/* 입력 영역 */}
       <Card className="p-4">
-        <p className="text-sm text-gray-500 mb-3">{getModeDescription()}</p>
+        <p className="text-sm text-gray-500 dark:text-t-text-muted mb-3">{getModeDescription()}</p>
 
         {mode !== 'file' ? (
           <>
@@ -227,12 +227,12 @@ export default function QuickPositionInput() {
                     ? '삼성전자 100 70000\nSK하이닉스 50 120000\n...'
                     : '종목명  수량  매수가  현재가...'
                 }
-                className="w-full h-32 p-3 border rounded-lg font-mono text-sm resize-none"
+                className="w-full h-32 p-3 border rounded-lg font-mono text-sm resize-none bg-white dark:bg-t-bg-card dark:border-t-border-hover dark:text-t-text-primary dark:placeholder-t-text-muted"
               />
               {/* 자동완성 드롭다운 */}
               {showSuggestions && filteredStocks.length > 0 && (
-                <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+                <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white dark:bg-t-bg-card border border-gray-200 dark:border-t-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="px-3 py-2 text-xs text-gray-500 dark:text-t-text-muted bg-gray-50 dark:bg-t-bg-elevated border-b">
                     아이디어 등록 종목에서 선택
                   </div>
                   {filteredStocks.slice(0, 10).map((stock) => (
@@ -240,7 +240,7 @@ export default function QuickPositionInput() {
                       key={stock.code}
                       type="button"
                       onClick={() => handleSelectStock(stock)}
-                      className="w-full px-3 py-2 text-left hover:bg-blue-50 flex justify-between items-center text-sm"
+                      className="w-full px-3 py-2 text-left hover:bg-blue-50 dark:hover:bg-blue-900/30 flex justify-between items-center text-sm dark:text-t-text-primary"
                     >
                       <span className="font-medium">{stock.name}</span>
                       <span className="text-gray-400 text-xs">{stock.code}</span>
@@ -250,7 +250,7 @@ export default function QuickPositionInput() {
               )}
             </div>
             {mode === 'quick' && ideaStocks.length > 0 && (
-              <div className="mt-2 text-xs text-gray-500">
+              <div className="mt-2 text-xs text-gray-500 dark:text-t-text-muted">
                 💡 아이디어에 등록된 종목: {ideaStocks.map(s => s.name).join(', ')}
               </div>
             )}
@@ -261,7 +261,7 @@ export default function QuickPositionInput() {
             </div>
           </>
         ) : (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+          <div className="border-2 border-dashed border-gray-300 dark:border-t-border rounded-lg p-8 text-center">
             <input
               type="file"
               accept=".csv,.json,.xlsx,.xls"
@@ -275,7 +275,7 @@ export default function QuickPositionInput() {
             >
               파일 선택
             </label>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-t-text-muted mt-2">
               또는 파일을 여기에 드래그하세요
             </p>
           </div>
@@ -284,7 +284,7 @@ export default function QuickPositionInput() {
 
       {/* 에러 메시지 */}
       {error && (
-        <Card className="p-4 bg-red-50 border-red-200">
+        <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200">
           <p className="text-red-600 text-sm whitespace-pre-wrap">{error}</p>
         </Card>
       )}
@@ -308,7 +308,7 @@ export default function QuickPositionInput() {
               <div
                 key={idx}
                 className={`p-3 rounded-lg text-sm ${
-                  pos.is_valid ? 'bg-green-50' : 'bg-red-50'
+                  pos.is_valid ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'
                 }`}
               >
                 {pos.is_valid ? (
@@ -316,7 +316,7 @@ export default function QuickPositionInput() {
                     <span className="font-medium">
                       {pos.stock_name} ({pos.stock_code})
                     </span>
-                    <span className="text-gray-600">
+                    <span className="text-gray-600 dark:text-t-text-muted">
                       {pos.quantity ? `${pos.quantity.toLocaleString()}주` : ''}
                       {pos.avg_price ? ` @ ${pos.avg_price.toLocaleString()}원` : ''}
                     </span>

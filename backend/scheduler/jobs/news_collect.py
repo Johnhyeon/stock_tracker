@@ -1,13 +1,15 @@
 """테마 뉴스 수집 작업."""
 import logging
-from datetime import datetime
 
 from core.database import async_session_maker
+from core.timezone import now_kst
 from services.news_collector_service import NewsCollectorService
+from scheduler.job_tracker import track_job_execution
 
 logger = logging.getLogger(__name__)
 
 
+@track_job_execution("theme_news_collect")
 async def collect_theme_news() -> dict:
     """테마 뉴스 수집 작업.
 
@@ -21,7 +23,7 @@ async def collect_theme_news() -> dict:
         "naver_count": 0,
         "rss_count": 0,
         "total_count": 0,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
     }
 
     async with async_session_maker() as db:

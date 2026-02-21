@@ -1,17 +1,19 @@
 """YouTube 서비스."""
 import logging
 import asyncio
+import statistics
 from datetime import datetime, timedelta, date
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, func, asc, select
 
+from core.timezone import now_kst, today_kst
 from models import YouTubeMention, TickerMentionStats, Stock, InvestmentIdea, IdeaStatus
+from models.stock_ohlcv import StockOHLCV
 from integrations.youtube import get_youtube_client, StockMentionAnalyzer
-from integrations.kis import get_kis_client
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,16 +23,18 @@ class YouTubeService:
     YouTube 영상 수집 및 종목 언급 분석을 담당합니다.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Union[Session, AsyncSession]):
         self.db = db
         self.youtube_client = get_youtube_client()
-        self.analyzer = StockMentionAnalyzer(db)
+        self.analyzer = StockMentionAnalyzer()
 
-    def _get_idea_tickers(self) -> list[str]:
-        """활성/관찰 중인 아이디어의 종목명 목록 조회."""
-        ideas = self.db.query(InvestmentIdea).filter(
+    async def _get_idea_tickers(self) -> list[str]:
+        """활성/관찰 중인 아이디어의 종목명 목록 조회 (비동기)."""
+        stmt = select(InvestmentIdea).where(
             InvestmentIdea.status.in_([IdeaStatus.ACTIVE, IdeaStatus.WATCHING])
-        ).all()
+        )
+        result = await self.db.execute(stmt)
+        ideas = result.scalars().all()
 
         tickers = set()
         for idea in ideas:
@@ -54,10 +58,10 @@ class YouTubeService:
         result = {"collected": 0, "new": 0, "with_mentions": 0, "tickers_searched": []}
 
         try:
-            published_after = datetime.utcnow() - timedelta(hours=hours_back)
+            published_after = now_kst().replace(tzinfo=None) - timedelta(hours=hours_back)
 
-            # 아이디어에서 종목명 가져오기
-            tickers = self._get_idea_tickers()
+            # 아이디어에서 종목명 가져오기 (비동기)
+            tickers = await self._get_idea_tickers()
             result["tickers_searched"] = tickers
 
             if not tickers:
@@ -72,20 +76,20 @@ class YouTubeService:
             )
             result["collected"] = len(videos)
 
-            # 종목 언급 분석
+            # 비동기로 종목 캐시 로딩 후 분석
+            await self.analyzer.load_stock_cache_async(self.db)
             analyzed_videos = self.analyzer.analyze_videos(videos)
             result["with_mentions"] = len(analyzed_videos)
 
-            # DB에 저장
+            # DB에 저장 (비동기)
             for video in analyzed_videos:
                 video_id = video.get("video_id")
                 if not video_id:
                     continue
 
-                # 중복 체크
-                existing = self.db.query(YouTubeMention).filter(
-                    YouTubeMention.video_id == video_id
-                ).first()
+                # 중복 체크 (비동기)
+                stmt = select(YouTubeMention).where(YouTubeMention.video_id == video_id)
+                existing = (await self.db.execute(stmt)).scalars().first()
 
                 if existing:
                     # 통계 업데이트
@@ -101,7 +105,7 @@ class YouTubeService:
                         published_at_str.replace("Z", "+00:00")
                     )
                 except:
-                    published_at = datetime.utcnow()
+                    published_at = now_kst().replace(tzinfo=None)
 
                 mention = YouTubeMention(
                     video_id=video_id,
@@ -120,13 +124,13 @@ class YouTubeService:
                 self.db.add(mention)
                 result["new"] += 1
 
-                # 종목별 통계 업데이트
+                # 종목별 통계 업데이트 (비동기)
                 await self._update_ticker_stats(
                     video.get("mentioned_tickers", []),
                     video.get("view_count", 0),
                 )
 
-            self.db.commit()
+            await self.db.commit()
             logger.info(
                 f"YouTube collection completed: {result['new']} new, "
                 f"{result['with_mentions']} with mentions"
@@ -134,7 +138,7 @@ class YouTubeService:
 
         except Exception as e:
             logger.error(f"YouTube collection failed: {e}")
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
         return result
@@ -144,19 +148,21 @@ class YouTubeService:
         tickers: list[str],
         view_count: int,
     ) -> None:
-        """종목별 통계 업데이트."""
-        today = date.today()
+        """종목별 통계 업데이트 (비동기)."""
+        today = today_kst()
 
         for ticker in tickers:
-            # 기존 통계 조회 또는 생성
-            stats = self.db.query(TickerMentionStats).filter(
+            # 기존 통계 조회 또는 생성 (비동기)
+            stmt = select(TickerMentionStats).where(
                 TickerMentionStats.stock_code == ticker,
                 TickerMentionStats.stat_date == today,
-            ).first()
+            )
+            stats = (await self.db.execute(stmt)).scalars().first()
 
             if not stats:
-                # 종목명 조회
-                stock = self.db.query(Stock).filter(Stock.code == ticker).first()
+                # 종목명 조회 (비동기)
+                stock_stmt = select(Stock).where(Stock.code == ticker)
+                stock = (await self.db.execute(stock_stmt)).scalars().first()
                 stats = TickerMentionStats(
                     stock_code=ticker,
                     stock_name=stock.name if stock else None,
@@ -165,7 +171,7 @@ class YouTubeService:
                     youtube_total_views=0,
                 )
                 self.db.add(stats)
-                self.db.flush()  # 중복 방지를 위해 즉시 DB에 반영
+                await self.db.flush()  # 중복 방지를 위해 즉시 DB에 반영
 
             # None 처리
             if stats.youtube_mention_count is None:
@@ -205,7 +211,7 @@ class YouTubeService:
         if channel_id:
             query = query.filter(YouTubeMention.channel_id == channel_id)
 
-        cutoff = datetime.utcnow() - timedelta(days=days_back)
+        cutoff = now_kst().replace(tzinfo=None) - timedelta(days=days_back)
         query = query.filter(YouTubeMention.published_at >= cutoff)
 
         return (
@@ -244,7 +250,7 @@ class YouTubeService:
                 ...
             ]
         """
-        cutoff = date.today() - timedelta(days=days_back)
+        cutoff = today_kst() - timedelta(days=days_back)
 
         results = (
             self.db.query(
@@ -284,7 +290,7 @@ class YouTubeService:
         Returns:
             [{"date": "2024-01-15", "mention_count": 5, "total_views": 12345}, ...]
         """
-        cutoff = date.today() - timedelta(days=days_back)
+        cutoff = today_kst() - timedelta(days=days_back)
 
         results = (
             self.db.query(TickerMentionStats)
@@ -325,7 +331,7 @@ class YouTubeService:
         result = {"collected": 0, "new": 0, "with_mentions": 0, "tickers_found": [], "mode": mode}
 
         try:
-            published_after = datetime.utcnow() - timedelta(hours=hours_back)
+            published_after = now_kst().replace(tzinfo=None) - timedelta(hours=hours_back)
 
             # 모드별 설정
             if mode == "quick":
@@ -345,14 +351,15 @@ class YouTubeService:
                 )
             result["collected"] = len(videos)
 
-            # 종목 언급 분석
+            # 비동기로 종목 캐시 로딩 후 분석
+            await self.analyzer.load_stock_cache_async(self.db)
             analyzed_videos = self.analyzer.analyze_videos(videos)
             result["with_mentions"] = len(analyzed_videos)
 
             # 발견된 종목 집계
             tickers_found = set()
 
-            # DB에 저장
+            # DB에 저장 (비동기)
             for video in analyzed_videos:
                 video_id = video.get("video_id")
                 if not video_id:
@@ -361,10 +368,9 @@ class YouTubeService:
                 mentioned_tickers = video.get("mentioned_tickers", [])
                 tickers_found.update(mentioned_tickers)
 
-                # 중복 체크
-                existing = self.db.query(YouTubeMention).filter(
-                    YouTubeMention.video_id == video_id
-                ).first()
+                # 중복 체크 (비동기)
+                stmt = select(YouTubeMention).where(YouTubeMention.video_id == video_id)
+                existing = (await self.db.execute(stmt)).scalars().first()
 
                 if existing:
                     existing.view_count = video.get("view_count", existing.view_count)
@@ -379,7 +385,7 @@ class YouTubeService:
                         published_at_str.replace("Z", "+00:00")
                     )
                 except:
-                    published_at = datetime.utcnow()
+                    published_at = now_kst().replace(tzinfo=None)
 
                 mention = YouTubeMention(
                     video_id=video_id,
@@ -398,13 +404,13 @@ class YouTubeService:
                 self.db.add(mention)
                 result["new"] += 1
 
-                # 종목별 통계 업데이트
+                # 종목별 통계 업데이트 (비동기)
                 await self._update_ticker_stats(
                     mentioned_tickers,
                     video.get("view_count", 0),
                 )
 
-            self.db.commit()
+            await self.db.commit()
             result["tickers_found"] = list(tickers_found)
             logger.info(
                 f"Hot video collection completed: {result['new']} new, "
@@ -413,7 +419,7 @@ class YouTubeService:
 
         except Exception as e:
             logger.error(f"Hot video collection failed: {e}")
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
         return result
@@ -449,7 +455,7 @@ class YouTubeService:
                 ...
             ]
         """
-        today = date.today()
+        today = today_kst()
         half_period = days_back // 2
 
         # 최근 기간 (예: 최근 3일)
@@ -555,23 +561,33 @@ class YouTubeService:
         return top_tickers
 
     def _fetch_kis_prices(self, stock_codes: list[str]) -> dict[str, dict]:
-        """KIS API로 주가/거래량 정보 조회."""
-        import asyncio
-        from integrations.kis.client import KISClient
-
-        async def fetch_all():
-            # 매번 새 클라이언트 생성하여 이벤트 루프 문제 방지
-            kis_client = KISClient()
-            try:
-                return await kis_client.get_multiple_prices(stock_codes)
-            finally:
-                await kis_client.close()
-
-        try:
-            return asyncio.run(fetch_all())
-        except Exception as e:
-            logger.error(f"KIS API call failed: {e}")
+        """DB(stock_ohlcv)에서 최신 종가/거래량 조회."""
+        if not stock_codes:
             return {}
+
+        result = {}
+        for code in stock_codes:
+            rows = (
+                self.db.query(StockOHLCV)
+                .filter(StockOHLCV.stock_code == code)
+                .order_by(StockOHLCV.trade_date.desc())
+                .limit(2)
+                .all()
+            )
+            if not rows:
+                continue
+            latest = rows[0]
+            prev_close = rows[1].close_price if len(rows) >= 2 else latest.close_price
+            change = latest.close_price - prev_close
+            change_rate = round(change / prev_close * 100, 2) if prev_close else 0.0
+            result[code] = {
+                "current_price": latest.close_price,
+                "change": change,
+                "change_rate": change_rate,
+                "volume": latest.volume,
+                "prev_close": prev_close,
+            }
+        return result
 
     def _enrich_with_price_data(
         self,
@@ -693,3 +709,468 @@ class YouTubeService:
         )
 
         return round(total_score, 1), breakdown
+
+    # ===== 미디어 타임라인 =====
+
+    def get_stock_timeline(
+        self,
+        stock_code: str,
+        days_back: int = 90,
+    ) -> dict:
+        """종목별 미디어 타임라인 (가격 + 언급 결합).
+
+        Args:
+            stock_code: 종목코드
+            days_back: 분석 기간 (일)
+
+        Returns:
+            {daily, videos, summary}
+        """
+        cutoff = today_kst() - timedelta(days=days_back)
+
+        # 종목명 조회
+        stock = self.db.query(Stock).filter(Stock.code == stock_code).first()
+        stock_name = stock.name if stock else None
+
+        # 1. TickerMentionStats에서 일별 언급 데이터
+        mention_rows = (
+            self.db.query(TickerMentionStats)
+            .filter(
+                TickerMentionStats.stock_code == stock_code,
+                TickerMentionStats.stat_date >= cutoff,
+            )
+            .order_by(TickerMentionStats.stat_date)
+            .all()
+        )
+        mention_by_date = {
+            r.stat_date: {
+                "mention_count": r.youtube_mention_count or 0,
+                "total_views": r.youtube_total_views or 0,
+            }
+            for r in mention_rows
+        }
+
+        # 2. StockOHLCV에서 일별 종가
+        ohlcv_rows = (
+            self.db.query(StockOHLCV)
+            .filter(
+                StockOHLCV.stock_code == stock_code,
+                StockOHLCV.trade_date >= cutoff,
+            )
+            .order_by(StockOHLCV.trade_date)
+            .all()
+        )
+        price_by_date = {r.trade_date: int(r.close_price) for r in ohlcv_rows}
+
+        # 3. 날짜 병합 — 주말 가격은 직전 거래일 종가로 이월(forward-fill)
+        all_dates = sorted(set(mention_by_date.keys()) | set(price_by_date.keys()))
+        daily = []
+        last_known_price = None
+        for d in all_dates:
+            m = mention_by_date.get(d, {"mention_count": 0, "total_views": 0})
+            price = price_by_date.get(d)
+            if price is not None:
+                last_known_price = price
+            daily.append({
+                "date": d.isoformat(),
+                "close_price": price if price is not None else last_known_price,
+                "mention_count": m["mention_count"],
+                "total_views": m["total_views"],
+            })
+
+        # 4. 관련 영상 목록
+        cutoff_dt = datetime.combine(cutoff, datetime.min.time())
+        video_rows = (
+            self.db.query(YouTubeMention)
+            .filter(
+                YouTubeMention.mentioned_tickers.contains([stock_code]),
+                YouTubeMention.published_at >= cutoff_dt,
+            )
+            .order_by(desc(YouTubeMention.published_at))
+            .limit(30)
+            .all()
+        )
+        videos = [
+            {
+                "video_id": v.video_id,
+                "video_title": v.video_title,
+                "channel_name": v.channel_name,
+                "published_at": v.published_at.isoformat() if v.published_at else "",
+                "view_count": v.view_count,
+                "thumbnail_url": v.thumbnail_url,
+            }
+            for v in video_rows
+        ]
+
+        # 5. 요약 통계
+        total_mentions = sum(d["mention_count"] for d in daily)
+        mention_days_count = sum(1 for d in daily if d["mention_count"] > 0)
+        avg_daily = total_mentions / max(mention_days_count, 1)
+
+        # 첫 언급일 가격, 최신 가격
+        first_mention_date = None
+        for d in all_dates:
+            m = mention_by_date.get(d)
+            if m and m["mention_count"] > 0:
+                first_mention_date = d
+                break
+
+        # forward-fill된 daily에서 가격 조회 (주말도 직전 거래일 가격 적용됨)
+        daily_by_date = {d["date"]: d["close_price"] for d in daily}
+        price_at_first = daily_by_date.get(first_mention_date.isoformat()) if first_mention_date else None
+        price_now = daily[-1]["close_price"] if daily else None
+
+        price_change_pct = None
+        if price_at_first and price_now and price_at_first > 0:
+            price_change_pct = round((price_now - price_at_first) / price_at_first * 100, 2)
+
+        summary = {
+            "total_mentions": total_mentions,
+            "mention_days": mention_days_count,
+            "avg_daily": round(avg_daily, 2),
+            "price_at_first_mention": price_at_first,
+            "price_now": price_now,
+            "price_change_pct": price_change_pct,
+        }
+
+        return {
+            "stock_code": stock_code,
+            "stock_name": stock_name,
+            "daily": daily,
+            "videos": videos,
+            "summary": summary,
+        }
+
+    # ===== 언급 백테스트 =====
+
+    def get_mention_backtest(
+        self,
+        days_back: int = 90,
+        min_mentions: int = 3,
+        holding_days_str: str = "3,7,14",
+    ) -> dict:
+        """유튜브 언급 후 수익률 백테스트.
+
+        Args:
+            days_back: 분석 기간
+            min_mentions: 최소 언급 횟수 임계값
+            holding_days_str: 보유 기간 (콤마 구분)
+
+        Returns:
+            {params, total_signals, holding_stats, items, summary}
+        """
+        holding_days = [int(x.strip()) for x in holding_days_str.split(",") if x.strip()]
+        cutoff = today_kst() - timedelta(days=days_back)
+
+        # 1. 임계값 이상 언급된 (stock_code, stat_date) 추출
+        signal_rows = (
+            self.db.query(
+                TickerMentionStats.stock_code,
+                TickerMentionStats.stock_name,
+                TickerMentionStats.stat_date,
+                TickerMentionStats.youtube_mention_count,
+            )
+            .filter(
+                TickerMentionStats.stat_date >= cutoff,
+                TickerMentionStats.youtube_mention_count >= min_mentions,
+            )
+            .order_by(TickerMentionStats.stat_date)
+            .all()
+        )
+
+        # 2. 종목별 첫 신호일 그룹화
+        first_signals: dict[str, dict] = {}
+        for row in signal_rows:
+            code = row.stock_code
+            if code not in first_signals:
+                first_signals[code] = {
+                    "stock_code": code,
+                    "stock_name": row.stock_name,
+                    "signal_date": row.stat_date,
+                    "mention_count": row.youtube_mention_count or 0,
+                }
+
+        # 3. 각 신호에 대해 OHLCV 기반 수익률 계산
+        max_holding = max(holding_days) if holding_days else 30
+        items = []
+
+        for code, sig in first_signals.items():
+            signal_date = sig["signal_date"]
+
+            # entry_price: 신호일 또는 직전 거래일 종가
+            entry_row = (
+                self.db.query(StockOHLCV)
+                .filter(
+                    StockOHLCV.stock_code == code,
+                    StockOHLCV.trade_date <= signal_date,
+                )
+                .order_by(desc(StockOHLCV.trade_date))
+                .first()
+            )
+            if not entry_row:
+                continue
+
+            entry_price = int(entry_row.close_price)
+            if entry_price <= 0:
+                continue
+
+            # 보유기간별 exit_price 계산
+            returns = {}
+            for hd in holding_days:
+                target_date = signal_date + timedelta(days=hd)
+                exit_row = (
+                    self.db.query(StockOHLCV)
+                    .filter(
+                        StockOHLCV.stock_code == code,
+                        StockOHLCV.trade_date >= target_date,
+                    )
+                    .order_by(asc(StockOHLCV.trade_date))
+                    .first()
+                )
+                if exit_row:
+                    exit_price = int(exit_row.close_price)
+                    ret = round((exit_price - entry_price) / entry_price * 100, 2)
+                    returns[f"{hd}d"] = ret
+                else:
+                    returns[f"{hd}d"] = None
+
+            items.append({
+                "stock_code": code,
+                "stock_name": sig["stock_name"],
+                "signal_date": signal_date.isoformat(),
+                "mention_count": sig["mention_count"],
+                "entry_price": entry_price,
+                "returns": returns,
+            })
+
+        # 4. 보유기간별 통계
+        holding_stats = {}
+        for hd in holding_days:
+            key = f"{hd}d"
+            rets = [it["returns"][key] for it in items if it["returns"].get(key) is not None]
+            if rets:
+                holding_stats[key] = {
+                    "sample_count": len(rets),
+                    "avg_return": round(sum(rets) / len(rets), 2),
+                    "median": round(statistics.median(rets), 2),
+                    "win_rate": round(sum(1 for r in rets if r > 0) / len(rets) * 100, 1),
+                    "max_return": round(max(rets), 2),
+                    "max_loss": round(min(rets), 2),
+                }
+            else:
+                holding_stats[key] = {
+                    "sample_count": 0,
+                    "avg_return": 0,
+                    "median": 0,
+                    "win_rate": 0,
+                    "max_return": 0,
+                    "max_loss": 0,
+                }
+
+        # 5. 전체 요약
+        all_first_returns = [
+            it["returns"].get(f"{holding_days[0]}d")
+            for it in items
+            if it["returns"].get(f"{holding_days[0]}d") is not None
+        ] if holding_days else []
+
+        # 최고/최악 종목 찾기
+        best_stock = None
+        worst_stock = None
+        if items and holding_days:
+            first_key = f"{holding_days[0]}d"
+            valid_items = [it for it in items if it["returns"].get(first_key) is not None]
+            if valid_items:
+                best_item = max(valid_items, key=lambda x: x["returns"][first_key])
+                worst_item = min(valid_items, key=lambda x: x["returns"][first_key])
+                best_stock = f"{best_item['stock_name'] or best_item['stock_code']} ({best_item['returns'][first_key]}%)"
+                worst_stock = f"{worst_item['stock_name'] or worst_item['stock_code']} ({worst_item['returns'][first_key]}%)"
+
+        summary = {
+            "avg_return": round(sum(all_first_returns) / len(all_first_returns), 2) if all_first_returns else 0,
+            "win_rate": round(sum(1 for r in all_first_returns if r > 0) / len(all_first_returns) * 100, 1) if all_first_returns else 0,
+            "best_stock": best_stock,
+            "worst_stock": worst_stock,
+        }
+
+        # 수익률순 정렬 (첫 보유기간 기준)
+        if holding_days:
+            first_key = f"{holding_days[0]}d"
+            items.sort(key=lambda x: x["returns"].get(first_key) or -999, reverse=True)
+
+        return {
+            "params": {
+                "days_back": days_back,
+                "min_mentions": min_mentions,
+                "holding_days": holding_days,
+            },
+            "total_signals": len(items),
+            "holding_stats": holding_stats,
+            "items": items,
+            "summary": summary,
+        }
+
+    # ===== 과열 경고 =====
+
+    def get_overheat_stocks(
+        self,
+        recent_days: int = 3,
+        baseline_days: int = 30,
+    ) -> dict:
+        """유튜브 과열 경고 시스템.
+
+        Args:
+            recent_days: 최근 기간 (일)
+            baseline_days: 기준 기간 (일)
+
+        Returns:
+            {items, summary}
+        """
+        today = today_kst()
+        recent_start = today - timedelta(days=recent_days)
+        baseline_start = today - timedelta(days=baseline_days)
+        baseline_end = recent_start - timedelta(days=1)
+
+        # 1. 최근 N일 종목별 총 언급 수
+        recent_rows = (
+            self.db.query(
+                TickerMentionStats.stock_code,
+                TickerMentionStats.stock_name,
+                func.sum(TickerMentionStats.youtube_mention_count).label("recent_sum"),
+            )
+            .filter(
+                TickerMentionStats.stat_date >= recent_start,
+            )
+            .group_by(TickerMentionStats.stock_code, TickerMentionStats.stock_name)
+            .having(func.sum(TickerMentionStats.youtube_mention_count) > 0)
+            .all()
+        )
+
+        # 2. 과거 baseline 기간 일평균
+        baseline_rows = (
+            self.db.query(
+                TickerMentionStats.stock_code,
+                func.sum(TickerMentionStats.youtube_mention_count).label("baseline_sum"),
+                func.count(TickerMentionStats.id).label("baseline_days_count"),
+            )
+            .filter(
+                TickerMentionStats.stat_date >= baseline_start,
+                TickerMentionStats.stat_date <= baseline_end,
+            )
+            .group_by(TickerMentionStats.stock_code)
+            .all()
+        )
+        baseline_map = {}
+        for row in baseline_rows:
+            days_count = max(row.baseline_days_count or 1, 1)
+            baseline_map[row.stock_code] = (row.baseline_sum or 0) / days_count
+
+        # 3. 전체 기간 총 언급 수
+        total_mention_rows = dict(
+            self.db.query(
+                TickerMentionStats.stock_code,
+                func.sum(TickerMentionStats.youtube_mention_count).label("total"),
+            )
+            .filter(TickerMentionStats.stat_date >= baseline_start)
+            .group_by(TickerMentionStats.stock_code)
+            .all()
+        )
+
+        # 4. 최근 영상 수 (종목별)
+        cutoff_dt = datetime.combine(recent_start, datetime.min.time())
+        # 빠른 조회를 위해 한번에 가져옴
+        recent_videos = (
+            self.db.query(YouTubeMention)
+            .filter(YouTubeMention.published_at >= cutoff_dt)
+            .all()
+        )
+        video_count_map: dict[str, int] = {}
+        for v in recent_videos:
+            for ticker in (v.mentioned_tickers or []):
+                video_count_map[ticker] = video_count_map.get(ticker, 0) + 1
+
+        # 5. 주가 변화 계산
+        items = []
+        for row in recent_rows:
+            code = row.stock_code
+            recent_sum = row.recent_sum or 0
+            baseline_avg = baseline_map.get(code, 0)
+
+            # overheat_ratio 계산
+            if baseline_avg > 0:
+                overheat_ratio = round(recent_sum / (baseline_avg * recent_days), 2)
+            else:
+                # baseline이 0이면 신규 등장 → ratio를 recent_sum 자체로
+                overheat_ratio = float(recent_sum) if recent_sum > 0 else 0
+
+            if overheat_ratio < 1.5 and baseline_avg > 0:
+                continue  # 평소 수준이면 스킵
+
+            # 주가 변화
+            price_change_pct = None
+            ohlcv_recent = (
+                self.db.query(StockOHLCV)
+                .filter(
+                    StockOHLCV.stock_code == code,
+                    StockOHLCV.trade_date >= recent_start,
+                )
+                .order_by(asc(StockOHLCV.trade_date))
+                .first()
+            )
+            ohlcv_latest = (
+                self.db.query(StockOHLCV)
+                .filter(StockOHLCV.stock_code == code)
+                .order_by(desc(StockOHLCV.trade_date))
+                .first()
+            )
+            if ohlcv_recent and ohlcv_latest and ohlcv_recent.close_price > 0:
+                price_change_pct = round(
+                    (int(ohlcv_latest.close_price) - int(ohlcv_recent.close_price))
+                    / int(ohlcv_recent.close_price) * 100, 2
+                )
+
+            # 상태 분류
+            if overheat_ratio >= 5:
+                status = "FRENZY"
+            elif overheat_ratio >= 3 and (price_change_pct is None or price_change_pct > 0):
+                status = "OVERHEAT"
+            elif overheat_ratio >= 2 and price_change_pct is not None and price_change_pct < -3:
+                status = "CONTRARIAN"
+            elif baseline_avg > 0 and overheat_ratio < 1:
+                status = "COOLING"
+            else:
+                status = "NORMAL"
+
+            items.append({
+                "stock_code": code,
+                "stock_name": row.stock_name,
+                "status": status,
+                "recent_mentions": recent_sum,
+                "baseline_avg_daily": round(baseline_avg, 2),
+                "overheat_ratio": overheat_ratio,
+                "price_change_pct": price_change_pct,
+                "mention_count_total": total_mention_rows.get(code, 0),
+                "recent_videos_count": video_count_map.get(code, 0),
+            })
+
+        # 6. overheat_ratio 내림차순 정렬
+        items.sort(key=lambda x: x["overheat_ratio"], reverse=True)
+
+        # 7. 요약
+        status_counts = {"OVERHEAT": 0, "FRENZY": 0, "CONTRARIAN": 0, "COOLING": 0}
+        for it in items:
+            if it["status"] in status_counts:
+                status_counts[it["status"]] += 1
+
+        summary = {
+            "total": len(items),
+            "overheat_count": status_counts["OVERHEAT"],
+            "frenzy_count": status_counts["FRENZY"],
+            "contrarian_count": status_counts["CONTRARIAN"],
+            "cooling_count": status_counts["COOLING"],
+        }
+
+        return {
+            "items": items,
+            "summary": summary,
+        }

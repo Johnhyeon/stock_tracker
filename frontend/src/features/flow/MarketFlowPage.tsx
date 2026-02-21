@@ -27,7 +27,7 @@ export default function MarketFlowPage() {
   return (
     <div>
       {/* 탭 */}
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+      <div className="border-b border-gray-200 dark:border-t-border mb-6">
         <nav className="flex gap-6 -mb-px">
           {TABS.map(tab => (
             <button
@@ -36,7 +36,7 @@ export default function MarketFlowPage() {
               className={`py-2.5 px-1 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  : 'border-transparent text-gray-500 dark:text-t-text-muted hover:text-gray-700 dark:hover:text-t-text-secondary'
               }`}
             >
               {tab.label}

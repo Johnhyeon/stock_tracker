@@ -6,6 +6,9 @@ import logging
 from datetime import date, timedelta
 from typing import Optional
 
+from core.timezone import today_kst
+
+
 from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
@@ -14,6 +17,11 @@ from models import StockOHLCV
 from services.price_service import get_price_service
 
 logger = logging.getLogger(__name__)
+
+
+def is_trading_day(d: date) -> bool:
+    """주말이 아닌 거래일인지 확인 (공휴일은 KIS API가 자체 필터)."""
+    return d.weekday() < 5  # 월(0)~금(4)
 
 
 class OHLCVService:
@@ -40,8 +48,9 @@ class OHLCVService:
             lightweight-charts 형식의 캔들 데이터 리스트
         """
         if end_date is None:
-            end_date = date.today()
-        start_date = end_date - timedelta(days=days + 30)  # 여유분
+            end_date = today_kst()
+        # 거래일→달력일 변환: 주말/공휴일 고려 (1.5배 + 여유분)
+        start_date = end_date - timedelta(days=int(days * 1.5) + 30)
 
         stmt = (
             select(StockOHLCV)
@@ -95,8 +104,8 @@ class OHLCVService:
                 logger.debug(f"{stock_code}: 이미 {existing_count}일 데이터 존재, 스킵")
                 return 0
 
-        end_date = date.today()
-        start_date = end_date - timedelta(days=days + 30)
+        end_date = today_kst()
+        start_date = end_date - timedelta(days=int(days * 1.5) + 30)
 
         try:
             data = await self.price_service.get_ohlcv(
@@ -111,7 +120,7 @@ class OHLCVService:
                 logger.warning(f"{stock_code}: OHLCV 데이터 없음")
                 return 0
 
-            # Upsert (중복 시 업데이트)
+            # Upsert (중복 시 업데이트, 비거래일 제외)
             saved_count = 0
             for row in data:
                 trade_date = date(
@@ -119,6 +128,12 @@ class OHLCVService:
                     int(row["date"][4:6]),
                     int(row["date"][6:8]),
                 )
+                # 주말 데이터 필터링
+                if trade_date.weekday() >= 5:
+                    continue
+                # 0값 데이터 필터링 (장 시작 전 당일 데이터 등)
+                if int(row["close"]) <= 0 or int(row["open"]) <= 0:
+                    continue
                 stmt = insert(StockOHLCV).values(
                     stock_code=stock_code,
                     trade_date=trade_date,
@@ -155,7 +170,12 @@ class OHLCVService:
         Returns:
             성공 여부
         """
-        today = date.today()
+        today = today_kst()
+
+        # 비거래일이면 스킵
+        if not is_trading_day(today):
+            logger.debug(f"{stock_code}: 비거래일 스킵 ({today})")
+            return True
 
         # 이미 오늘 데이터가 있으면 스킵
         stmt = select(StockOHLCV).where(

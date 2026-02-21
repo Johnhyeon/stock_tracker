@@ -1,11 +1,11 @@
 """테마 셋업 API 엔드포인트."""
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_async_db
+from core.timezone import now_kst
 from services.theme_setup_service import ThemeSetupService
 from services.chart_pattern_service import ChartPatternService
 from services.news_collector_service import NewsCollectorService
@@ -46,7 +46,7 @@ async def get_emerging_themes(
     return EmergingThemesResponse(
         themes=[ThemeSetupResponse(**t) for t in themes],
         total_count=len(themes),
-        generated_at=datetime.now().isoformat(),
+        generated_at=now_kst().isoformat(),
     )
 
 
@@ -229,8 +229,9 @@ async def collect_investor_flow(
             "collected_count": result["collected_count"],
             "failed_count": result["failed_count"],
             "records_saved": result.get("records_saved", 0),
+            "skipped_stocks": result.get("skipped_stocks", 0),
             "total_stocks": len(stock_codes),
-            "collected_at": datetime.now().isoformat(),
+            "collected_at": now_kst().isoformat(),
         }
     finally:
         status_manager.finish("investor_flow")
@@ -251,7 +252,7 @@ async def recalculate_flow_scores(
     return {
         "total_records": result["total"],
         "updated_records": result["updated"],
-        "recalculated_at": datetime.now().isoformat(),
+        "recalculated_at": now_kst().isoformat(),
     }
 
 
@@ -345,7 +346,7 @@ async def get_stock_ohlcv(
     candles = await ohlcv_service.get_ohlcv(stock_code, days=days, end_date=end_date)
 
     # DB에 데이터가 부족하면 KIS API에서 수집 (최초 로딩 시에만)
-    if not before_date and len(candles) < min(days, 30):
+    if not before_date and len(candles) < days * 0.5:
         collected = await ohlcv_service.collect_ohlcv(stock_code, days=max(days, 240))
         if collected > 0:
             candles = await ohlcv_service.get_ohlcv(stock_code, days=days, end_date=end_date)

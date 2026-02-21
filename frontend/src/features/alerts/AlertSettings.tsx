@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { alertApi } from '../../services/api'
+import { useFeatureFlags } from '../../hooks/useFeatureFlags'
 import type {
   AlertRule,
   AlertType,
@@ -18,8 +19,8 @@ const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   target_reached: '목표가 도달',
   fundamental_deterioration: '펀더멘털 악화',
   time_expired: '예상 기간 초과',
-  trader_new_mention: '트레이더 신규 언급',
-  trader_cross_check: '트레이더 교차 언급',
+  expert_new_mention: '전문가 신규 언급',
+  expert_cross_check: '전문가 교차 언급',
   custom: '사용자 정의',
 }
 
@@ -30,10 +31,17 @@ const CHANNEL_LABELS: Record<NotificationChannel, string> = {
 }
 
 export default function AlertSettings() {
+  const features = useFeatureFlags()
   const [settings, setSettings] = useState<AlertSettingsType | null>(null)
   const [rules, setRules] = useState<AlertRule[]>([])
   const [logs, setLogs] = useState<NotificationLog[]>([])
   const [loading, setLoading] = useState(true)
+
+  const filteredAlertTypes = useMemo(() => {
+    const hidden: string[] = []
+    if (!features.expert) hidden.push('expert_new_mention', 'expert_cross_check')
+    return Object.entries(ALERT_TYPE_LABELS).filter(([key]) => !hidden.includes(key))
+  }, [features.expert])
   const [testLoading, setTestLoading] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [showAddRule, setShowAddRule] = useState(false)
@@ -141,7 +149,7 @@ export default function AlertSettings() {
   }
 
   if (loading) {
-    return <p className="text-gray-500">로딩 중...</p>
+    return <p className="text-gray-500 dark:text-t-text-muted">로딩 중...</p>
   }
 
   return (
@@ -158,14 +166,14 @@ export default function AlertSettings() {
         <h2 className="font-semibold mb-4">알림 채널 상태</h2>
         <div className="grid grid-cols-2 gap-4">
           {/* 텔레그램 */}
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg dark:border-t-border dark:bg-t-bg-elevated">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium">텔레그램</span>
               <div className={`w-3 h-3 rounded-full ${settings?.telegram_configured ? 'bg-green-500' : 'bg-gray-400'}`} />
             </div>
             {settings?.telegram_configured ? (
               <>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-t-text-muted">
                   @{settings.telegram_bot_username || '설정됨'}
                 </p>
                 <Button
@@ -179,21 +187,21 @@ export default function AlertSettings() {
                 </Button>
               </>
             ) : (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-t-text-muted">
                 TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID를 .env에 설정하세요
               </p>
             )}
           </div>
 
           {/* 이메일 */}
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border rounded-lg dark:border-t-border dark:bg-t-bg-elevated">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium">이메일</span>
               <div className={`w-3 h-3 rounded-full ${settings?.email_configured ? 'bg-green-500' : 'bg-gray-400'}`} />
             </div>
             {settings?.email_configured ? (
               <>
-                <p className="text-sm text-gray-600">{settings.smtp_host}</p>
+                <p className="text-sm text-gray-600 dark:text-t-text-muted">{settings.smtp_host}</p>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -205,7 +213,7 @@ export default function AlertSettings() {
                 </Button>
               </>
             ) : (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-t-text-muted">
                 SMTP_HOST, SMTP_USER 등을 .env에 설정하세요
               </p>
             )}
@@ -232,28 +240,28 @@ export default function AlertSettings() {
 
         {/* 새 규칙 추가 폼 */}
         {showAddRule && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+          <div className="mb-4 p-4 bg-gray-50 dark:bg-t-bg-elevated rounded-lg space-y-3">
             <input
               type="text"
               placeholder="규칙 이름"
               value={newRule.name}
               onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded bg-white dark:bg-t-bg-card dark:border-t-border-hover dark:text-t-text-primary"
             />
             <div className="grid grid-cols-3 gap-3">
               <select
                 value={newRule.alert_type}
                 onChange={(e) => setNewRule({ ...newRule, alert_type: e.target.value as AlertType })}
-                className="px-3 py-2 border rounded"
+                className="px-3 py-2 border rounded bg-white dark:bg-t-bg-card dark:border-t-border-hover dark:text-t-text-primary"
               >
-                {Object.entries(ALERT_TYPE_LABELS).map(([value, label]) => (
+                {filteredAlertTypes.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
               <select
                 value={newRule.channel}
                 onChange={(e) => setNewRule({ ...newRule, channel: e.target.value as NotificationChannel })}
-                className="px-3 py-2 border rounded"
+                className="px-3 py-2 border rounded bg-white dark:bg-t-bg-card dark:border-t-border-hover dark:text-t-text-primary"
               >
                 {Object.entries(CHANNEL_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
@@ -264,7 +272,7 @@ export default function AlertSettings() {
                 placeholder="쿨다운 (분)"
                 value={newRule.cooldown_minutes}
                 onChange={(e) => setNewRule({ ...newRule, cooldown_minutes: Number(e.target.value) })}
-                className="px-3 py-2 border rounded"
+                className="px-3 py-2 border rounded bg-white dark:bg-t-bg-card dark:border-t-border-hover dark:text-t-text-primary"
               />
             </div>
             <div className="flex gap-2">
@@ -276,14 +284,14 @@ export default function AlertSettings() {
 
         {/* 규칙 목록 */}
         {rules.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">등록된 알림 규칙이 없습니다.</p>
+          <p className="text-gray-500 dark:text-t-text-muted text-center py-4">등록된 알림 규칙이 없습니다.</p>
         ) : (
           <div className="space-y-2">
             {rules.map((rule) => (
               <div
                 key={rule.id}
-                className={`p-3 border rounded-lg flex items-center justify-between ${
-                  rule.is_enabled ? 'bg-white' : 'bg-gray-50'
+                className={`p-3 border rounded-lg flex items-center justify-between dark:border-t-border ${
+                  rule.is_enabled ? 'bg-white dark:bg-t-bg-card' : 'bg-gray-50 dark:bg-t-bg-elevated'
                 }`}
               >
                 <div>
@@ -295,7 +303,7 @@ export default function AlertSettings() {
                       {rule.is_enabled ? '활성' : '비활성'}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-t-text-muted">
                     <span>{ALERT_TYPE_LABELS[rule.alert_type]}</span>
                     <span>•</span>
                     <span>{CHANNEL_LABELS[rule.channel]}</span>
@@ -329,14 +337,14 @@ export default function AlertSettings() {
       <Card className="p-4">
         <h2 className="font-semibold mb-4">최근 알림 로그</h2>
         {logs.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">알림 로그가 없습니다.</p>
+          <p className="text-gray-500 dark:text-t-text-muted text-center py-4">알림 로그가 없습니다.</p>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {logs.map((log) => (
               <div
                 key={log.id}
-                className={`p-3 border rounded-lg text-sm ${
-                  log.is_success ? 'bg-green-50' : 'bg-red-50'
+                className={`p-3 border rounded-lg text-sm dark:border-t-border ${
+                  log.is_success ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -346,11 +354,11 @@ export default function AlertSettings() {
                     </Badge>
                     <span className="font-medium">{log.title}</span>
                   </div>
-                  <span className="text-gray-500">
+                  <span className="text-gray-500 dark:text-t-text-muted">
                     {new Date(log.created_at).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-gray-600 mt-1">{log.message}</p>
+                <p className="text-gray-600 dark:text-t-text-muted mt-1">{log.message}</p>
                 {log.error_message && (
                   <p className="text-red-600 mt-1">{log.error_message}</p>
                 )}

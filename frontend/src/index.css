@@ -1,77 +1,148 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
-  transition: background-color 0.3s ease, color 0.3s ease;
+@layer base {
+  html {
+    overflow-y: scroll; /* 스크롤바 항상 표시 → 차트 펼칠 때 뷰포트 폭 흔들림 방지 */
+  }
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-t-bg dark:text-t-text-primary;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
 }
 
-/* 스크롤바 다크모드 */
+/* 스크롤바 - 다크 OLED */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-800;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  @apply bg-gray-300 dark:bg-t-border-hover rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-500;
+  @apply bg-gray-400 dark:bg-t-border-active;
 }
 
-/* 다크모드 텍스트 색상 */
-.dark .text-gray-900 { color: #f3f4f6; }
-.dark .text-gray-800 { color: #e5e7eb; }
-.dark .text-gray-700 { color: #d1d5db; }
-.dark .text-gray-600 { color: #9ca3af; }
-.dark .text-gray-500 { color: #9ca3af; }
-.dark .text-gray-400 { color: #6b7280; }
+@layer utilities {
+  /* 트레이딩 숫자용 tabular-nums */
+  .font-trading-num {
+    font-variant-numeric: tabular-nums;
+    font-family: 'Fira Code', monospace;
+  }
 
-/* 다크모드 배경색 - 계층 구조 */
-.dark .bg-white { background-color: #1f2937; }
-.dark .bg-gray-50 { background-color: #111827; }
-.dark .bg-gray-100 { background-color: #374151; }
+  /* 미세 글로우 텍스트 */
+  .glow-text {
+    text-shadow: 0 0 8px currentColor;
+  }
 
-/* 다크모드 테두리 */
-.dark .border-gray-100 { border-color: #374151; }
-.dark .border-gray-200 { border-color: #374151; }
-.dark .border-gray-300 { border-color: #4b5563; }
+  /* 글로우 보더 */
+  .glow-border {
+    box-shadow: 0 0 8px 1px rgba(245, 158, 11, 0.1);
+  }
+}
 
-/* 다크모드 구분선 */
-.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #374151; }
-.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #374151; }
+/* 네이티브 select option 다크모드 */
+.dark select option {
+  background-color: #1a1a28;
+  color: #e2e8f0;
+}
 
-/* 다크모드 호버 */
-.dark .hover\:bg-gray-100:hover { background-color: #374151; }
-.dark .hover\:bg-gray-50:hover { background-color: #1f2937; }
-.dark .hover\:text-gray-700:hover { color: #d1d5db; }
-.dark .hover\:text-gray-900:hover { color: #f3f4f6; }
+.dark select option:checked {
+  background-color: #2a2a3d;
+}
 
-/* 다크모드 알림 배경 */
-.dark .bg-blue-50 { background-color: #1e3a5f; }
-.dark .bg-green-50 { background-color: #14532d; }
-.dark .bg-yellow-50 { background-color: #422006; }
-.dark .bg-red-50 { background-color: #450a0a; }
+/* 마켓 티커 마키 스크롤 */
+.ticker-wrapper {
+  mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+}
 
-/* 다크모드 알림 텍스트 */
-.dark .text-blue-800 { color: #93c5fd; }
-.dark .text-blue-700 { color: #60a5fa; }
-.dark .text-green-800 { color: #86efac; }
-.dark .text-green-700 { color: #4ade80; }
-.dark .text-yellow-800 { color: #fde047; }
-.dark .text-yellow-700 { color: #facc15; }
-.dark .text-red-800 { color: #fca5a5; }
-.dark .text-red-700 { color: #f87171; }
+.ticker-scroll {
+  animation: ticker-slide 30s linear infinite;
+}
 
-/* 다크모드 primary */
-.dark .bg-primary-100 { background-color: #1e3a5f; }
-.dark .bg-primary-50 { background-color: #172554; }
-.dark .text-primary-800 { color: #93c5fd; }
-.dark .text-primary-700 { color: #60a5fa; }
-.dark .text-primary-600 { color: #60a5fa; }
+.ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* 차트가 있는 페이지에서 GPU 부하 애니메이션 정지 */
+body:has(.stock-chart-wrapper) .ticker-scroll {
+  animation-play-state: paused;
+}
+
+body:has(.stock-chart-wrapper) .animate-pulse-live {
+  animation: none;
+}
+
+/* 차트 캔버스 격리 */
+.stock-chart-wrapper {
+  contain: layout style paint;
+  isolation: isolate;
+}
+
+/* 테이블 내 차트 레이아웃 루프 방지 */
+.chart-grid-cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* prefers-reduced-motion: 애니메이션 비활성화 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.landing-shell {
+  position: relative;
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', 'Pretendard Variable', sans-serif;
+  background:
+    radial-gradient(120% 80% at 10% 5%, rgba(6, 182, 212, 0.35), transparent 45%),
+    radial-gradient(90% 70% at 90% 0%, rgba(56, 189, 248, 0.28), transparent 42%),
+    linear-gradient(135deg, #020617 0%, #0f172a 45%, #082f49 100%);
+}
+
+.landing-title {
+  font-family: 'Space Grotesk', 'Pretendard Variable', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.landing-grid {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 50% 20%, black 20%, transparent 75%);
+}
+
+.landing-float {
+  animation: landing-float 7s ease-in-out infinite;
+}
+
+@keyframes landing-float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}

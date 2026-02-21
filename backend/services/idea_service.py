@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import re
 import logging
 from datetime import date, datetime
@@ -10,9 +9,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from models import InvestmentIdea, Position, IdeaStatus, IdeaType, FundamentalHealth, Stock
+from models.stock_ohlcv import StockOHLCV
 from schemas import IdeaCreate, IdeaUpdate, ExitCheckResult
 from core.events import event_bus, Event, EventType
-from services.price_service import get_price_service
+from core.timezone import now_kst, today_kst
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,15 @@ logger = logging.getLogger(__name__)
 class IdeaService:
     def __init__(self, db: Session):
         self.db = db
+
+    def _fire_event(self, event_type: EventType, payload: dict):
+        """동기 컨텍스트에서 이벤트를 fire-and-forget으로 발행합니다."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(event_bus.publish(Event(type=event_type, payload=payload)))
+        except RuntimeError:
+            # 이벤트 루프가 없으면 무시 (테스트 등)
+            pass
 
     def create(self, data: IdeaCreate) -> InvestmentIdea:
         # 종목 코드 파싱 및 현재가 조회
@@ -48,12 +57,39 @@ class IdeaService:
         self.db.add(idea)
         self.db.commit()
         self.db.refresh(idea)
+
+        # 이벤트 발행 (비동기 핸들러를 fire-and-forget으로 실행)
+        self._fire_event(EventType.IDEA_CREATED, {
+            "idea_id": str(idea.id),
+            "tickers": data.tickers,
+            "type": data.type.value if hasattr(data.type, 'value') else str(data.type),
+        })
+
         return idea
 
     def _extract_stock_code(self, ticker: str) -> Optional[str]:
         """'삼성전자(005930)' 형식에서 종목코드 추출."""
-        match = re.search(r'\((\d{6})\)', ticker)
+        match = re.search(r'\(([A-Za-z0-9]{6})\)', ticker)
         return match.group(1) if match else None
+
+    def _get_db_prices(self, stock_codes: list[str]) -> dict:
+        """DB(stock_ohlcv)에서 최신 종가 일괄 조회."""
+        if not stock_codes:
+            return {}
+        result = {}
+        for code in stock_codes:
+            row = (
+                self.db.query(StockOHLCV)
+                .filter(StockOHLCV.stock_code == code)
+                .order_by(StockOHLCV.trade_date.desc())
+                .first()
+            )
+            if row:
+                result[code] = {
+                    "current_price": row.close_price,
+                    "volume": row.volume,
+                }
+        return result
 
     def _fetch_initial_prices(self, tickers: List[str]) -> dict:
         """종목들의 현재가를 조회하여 초기 가격 정보 반환."""
@@ -69,16 +105,13 @@ class IdeaService:
             return initial_prices
 
         try:
-            price_service = get_price_service()
-            # 동기 컨텍스트에서 비동기 호출
-            prices = asyncio.run(price_service.get_multiple_prices(stock_codes))
-
+            prices = self._get_db_prices(stock_codes)
             for code, price_data in prices.items():
                 current_price = price_data.get("current_price")
                 if current_price is not None:
                     initial_prices[code] = {
                         "price": float(current_price) if isinstance(current_price, Decimal) else current_price,
-                        "date": datetime.now().isoformat(),
+                        "date": now_kst().isoformat(),
                     }
         except Exception as e:
             logger.warning(f"초기 가격 조회 실패: {e}")
@@ -117,14 +150,28 @@ class IdeaService:
         idea.version += 1
         self.db.commit()
         self.db.refresh(idea)
+
+        self._fire_event(EventType.IDEA_UPDATED, {
+            "idea_id": str(idea.id),
+            "updated_fields": list(update_data.keys()),
+        })
+
         return idea
 
     def delete(self, idea_id: UUID) -> bool:
         idea = self.get(idea_id)
         if not idea:
             return False
+
+        idea_tickers = idea.tickers
         self.db.delete(idea)
         self.db.commit()
+
+        self._fire_event(EventType.IDEA_DELETED, {
+            "idea_id": str(idea_id),
+            "tickers": idea_tickers,
+        })
+
         return True
 
     def check_exit_criteria(self, idea_id: UUID) -> Optional[ExitCheckResult]:
@@ -210,24 +257,11 @@ class IdeaService:
                     if code:
                         all_stock_codes.add(code)
 
-        # 현재가 조회 (별도 스레드에서 이벤트 루프 실행)
+        # 현재가 조회 (DB stock_ohlcv)
         current_prices = {}
         if all_stock_codes:
             try:
-                def run_async():
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        price_service = get_price_service()
-                        return loop.run_until_complete(
-                            price_service.get_multiple_prices(list(all_stock_codes))
-                        )
-                    finally:
-                        loop.close()
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(run_async)
-                    current_prices = future.result(timeout=10)  # 10초 타임아웃
+                current_prices = self._get_db_prices(list(all_stock_codes))
             except Exception as e:
                 logger.warning(f"현재가 조회 실패: {e}")
 
@@ -268,8 +302,8 @@ class IdeaService:
                 "watching_ideas": len(watching_ideas),
                 "research_ideas": len(research_ideas),
                 "chart_ideas": len(chart_ideas),
-                "total_invested": total_invested,
-                "total_unrealized_return": total_unrealized,
+                "total_invested": round(total_invested),
+                "total_unrealized_return": round(total_unrealized),
                 "avg_return_pct": avg_return_pct,
             },
             "research_ideas": self._format_ideas_for_dashboard(research_ideas, current_prices, stock_names),
@@ -294,17 +328,11 @@ class IdeaService:
                     if code:
                         all_stock_codes.add(code)
 
-        # 현재가 조회 (비동기)
+        # 현재가 조회 (DB stock_ohlcv)
         current_prices = {}
         if all_stock_codes:
             try:
-                price_service = get_price_service()
-                current_prices = await asyncio.wait_for(
-                    price_service.get_multiple_prices(list(all_stock_codes)),
-                    timeout=10.0  # 10초 타임아웃
-                )
-            except asyncio.TimeoutError:
-                logger.warning("현재가 조회 타임아웃")
+                current_prices = self._get_db_prices(list(all_stock_codes))
             except Exception as e:
                 logger.warning(f"현재가 조회 실패: {e}")
 
@@ -345,8 +373,8 @@ class IdeaService:
                 "watching_ideas": len(watching_ideas),
                 "research_ideas": len(research_ideas),
                 "chart_ideas": len(chart_ideas),
-                "total_invested": total_invested,
-                "total_unrealized_return": total_unrealized,
+                "total_invested": round(total_invested),
+                "total_unrealized_return": round(total_unrealized),
                 "avg_return_pct": avg_return_pct,
             },
             "research_ideas": self._format_ideas_for_dashboard(research_ideas, current_prices, stock_names),
@@ -357,11 +385,11 @@ class IdeaService:
     def _extract_stock_code_from_ticker(self, ticker: str) -> Optional[str]:
         """티커에서 종목코드 추출 (6자리 숫자 또는 '이름(코드)' 형식)."""
         # 먼저 괄호 형식 확인
-        match = re.search(r'\((\d{6})\)', ticker)
+        match = re.search(r'\(([A-Za-z0-9]{6})\)', ticker)
         if match:
             return match.group(1)
         # 6자리 숫자인 경우
-        if re.match(r'^\d{6}$', ticker):
+        if re.match(r'^[A-Za-z0-9]{6}$', ticker):
             return ticker
         return None
 
@@ -375,7 +403,7 @@ class IdeaService:
         for idea in ideas:
             open_positions = [p for p in idea.positions if p.is_open]
             total_invested = sum(p.entry_price * p.quantity for p in open_positions)
-            days_active = (date.today() - idea.created_at.date()).days
+            days_active = (today_kst() - idea.created_at.date()).days
             time_remaining = idea.expected_timeframe_days - days_active
 
             # 포지션별 현재가 및 수익률 계산
@@ -407,12 +435,12 @@ class IdeaService:
                     "id": p.id,
                     "ticker": p.ticker,
                     "stock_name": stock_name,
-                    "entry_price": p.entry_price,
+                    "entry_price": round(p.entry_price),
                     "entry_date": p.entry_date,
                     "quantity": p.quantity,
                     "days_held": p.days_held,
-                    "current_price": current_price,
-                    "unrealized_profit": unrealized_profit,
+                    "current_price": round(current_price) if current_price is not None else None,
+                    "unrealized_profit": round(unrealized_profit) if unrealized_profit is not None else None,
                     "unrealized_return_pct": unrealized_return_pct,
                 })
 
@@ -437,7 +465,7 @@ class IdeaService:
                 "target_return_pct": idea.target_return_pct,
                 "created_at": idea.created_at,
                 "positions": formatted_positions,
-                "total_invested": total_invested,
+                "total_invested": round(total_invested),
                 "total_unrealized_return_pct": total_unrealized_return_pct,
                 "days_active": days_active,
                 "time_remaining_days": time_remaining,

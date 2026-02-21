@@ -14,7 +14,17 @@ export interface Trade {
   quantity_after?: number;
   reason?: string;
   notes?: string;
+  stock_code?: string;
+  stock_name?: string;
   created_at: string;
+}
+
+export interface TradeUpdateData {
+  price?: number;
+  quantity?: number;
+  trade_date?: string;
+  reason?: string;
+  notes?: string;
 }
 
 export interface TradeListResponse {

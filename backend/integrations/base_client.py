@@ -16,46 +16,42 @@ logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
-    """Token bucket rate limiter."""
+    """Token bucket rate limiter.
+
+    asyncio.Lock으로 요청 직렬화 + 최소 간격 보장.
+    gather()로 병렬 호출해도 초당 제한을 정확히 지킵니다.
+    """
 
     def __init__(self, calls_per_second: float = 5.0):
         self.calls_per_second = calls_per_second
-        self._semaphore: Optional[asyncio.Semaphore] = None
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self.last_call_time: float = 0.0
         self.min_interval = 1.0 / calls_per_second
-        self._lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._last_call_time: float = 0.0
 
-    def _get_semaphore(self) -> asyncio.Semaphore:
-        """현재 이벤트 루프에 맞는 Semaphore 반환."""
+    def _get_lock(self) -> asyncio.Lock:
+        """현재 이벤트 루프에 맞는 Lock 반환."""
         try:
             current_loop = asyncio.get_running_loop()
         except RuntimeError:
             current_loop = None
 
-        # 이벤트 루프가 변경되었으면 Semaphore 재생성
-        if self._semaphore is None or self._loop is not current_loop:
-            self._semaphore = asyncio.Semaphore(1)
+        if self._lock is None or self._loop is not current_loop:
+            self._lock = asyncio.Lock()
             self._loop = current_loop
-            self.last_call_time = 0.0
+            self._last_call_time = 0.0
 
-        return self._semaphore
+        return self._lock
 
     async def acquire(self):
-        semaphore = self._get_semaphore()
-        async with semaphore:
-            try:
-                loop = asyncio.get_running_loop()
-                now = loop.time()
-            except RuntimeError:
-                now = 0.0
-            time_since_last = now - self.last_call_time
-            if time_since_last < self.min_interval:
-                await asyncio.sleep(self.min_interval - time_since_last)
-            try:
-                self.last_call_time = asyncio.get_running_loop().time()
-            except RuntimeError:
-                self.last_call_time = 0.0
+        lock = self._get_lock()
+        async with lock:
+            loop = asyncio.get_running_loop()
+            now = loop.time()
+            wait_time = self.min_interval - (now - self._last_call_time)
+            if wait_time > 0:
+                await asyncio.sleep(wait_time)
+            self._last_call_time = asyncio.get_running_loop().time()
 
 
 class BaseAPIClient(ABC):
@@ -120,6 +116,26 @@ class BaseAPIClient(ABC):
                 json=json_data,
                 headers=request_headers,
             )
+
+            # 초당 거래건수 초과 (EGW00201) → 잠시 대기 후 재시도
+            if response.status_code == 500:
+                try:
+                    body = response.json()
+                    if body.get("msg_cd") == "EGW00201":
+                        logger.warning(f"Rate limit hit for {method} {path}, backing off 1s")
+                        await asyncio.sleep(1.0)
+                        # 재시도
+                        await self.rate_limiter.acquire()
+                        response = await self.client.request(
+                            method=method,
+                            url=path,
+                            params=params,
+                            json=json_data,
+                            headers=request_headers,
+                        )
+                except (ValueError, KeyError):
+                    pass
+
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -138,6 +154,44 @@ class BaseAPIClient(ABC):
         headers: Optional[dict] = None,
     ) -> dict[str, Any]:
         return await self._request("GET", path, params=params, headers=headers)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+        reraise=True,
+    )
+    async def _request_binary(
+        self,
+        method: str,
+        path: str,
+        params: Optional[dict] = None,
+        headers: Optional[dict] = None,
+    ) -> bytes:
+        """Make an HTTP request that returns binary data (e.g. ZIP files)."""
+        await self.rate_limiter.acquire()
+
+        request_headers = self.get_headers()
+        if headers:
+            request_headers.update(headers)
+
+        try:
+            response = await self.client.request(
+                method=method,
+                url=path,
+                params=params,
+                headers=request_headers,
+            )
+            response.raise_for_status()
+            return response.content
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error {e.response.status_code} for {method} {path}"
+            )
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Request error for {method} {path}: {e}")
+            raise
 
     async def post(
         self,

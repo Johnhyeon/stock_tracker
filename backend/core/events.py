@@ -1,7 +1,11 @@
+import logging
 from enum import Enum
 from typing import Callable, Dict, List, Any
 from dataclasses import dataclass
 from datetime import datetime
+from core.timezone import now_kst
+
+logger = logging.getLogger(__name__)
 
 
 class EventType(Enum):
@@ -10,6 +14,8 @@ class EventType(Enum):
     IDEA_DELETED = "idea_deleted"
     POSITION_ENTERED = "position_entered"
     POSITION_EXITED = "position_exited"
+    POSITION_ADDED_BUY = "position_added_buy"
+    POSITION_PARTIAL_EXIT = "position_partial_exit"
     FUNDAMENTAL_WARNING = "fundamental_warning"
     FOMO_DETECTED = "fomo_detected"
     TIME_EXPIRED = "time_expired"
@@ -18,6 +24,8 @@ class EventType(Enum):
     PRICE_UPDATED = "price_updated"
     DISCLOSURE_COLLECTED = "disclosure_collected"
     YOUTUBE_COLLECTED = "youtube_collected"
+    # Snapshot events
+    SNAPSHOT_REQUESTED = "snapshot_requested"
 
 
 @dataclass
@@ -30,7 +38,7 @@ class Event:
 
     def __post_init__(self):
         if self.created_at is None:
-            self.created_at = datetime.utcnow()
+            self.created_at = now_kst()
 
 
 class EventBus:
@@ -55,7 +63,7 @@ class EventBus:
                         if hasattr(result, '__await__'):
                             await result
                 except Exception as e:
-                    print(f"Error in event handler: {e}")
+                    logger.error(f"Event handler error for {event.type.value}: {e}", exc_info=True)
 
 
 event_bus = EventBus()

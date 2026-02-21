@@ -5,7 +5,10 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
+import httpx
+
 from integrations.kis import get_kis_client, KISClient
+from core.timezone import now_kst
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +25,14 @@ class PriceCache:
         async with self._lock:
             if key in self._cache:
                 timestamp, data = self._cache[key]
-                if datetime.now() - timestamp < timedelta(seconds=self.ttl):
+                if now_kst() - timestamp < timedelta(seconds=self.ttl):
                     return data
                 del self._cache[key]
             return None
 
     async def set(self, key: str, value: dict) -> None:
         async with self._lock:
-            self._cache[key] = (datetime.now(), value)
+            self._cache[key] = (now_kst(), value)
 
     async def clear(self) -> None:
         async with self._lock:
@@ -42,11 +45,19 @@ class PriceService:
     KIS API를 통해 가격 정보를 조회하고 캐싱합니다.
     """
 
+    # Yahoo Finance 심볼 매핑
+    US_INDEX_SYMBOLS = {
+        "sp500": {"symbol": "^GSPC", "name": "S&P 500"},
+        "nasdaq": {"symbol": "^IXIC", "name": "NASDAQ"},
+        "dow": {"symbol": "^DJI", "name": "DOW"},
+    }
+
     def __init__(self, kis_client: Optional[KISClient] = None):
         self.kis_client = kis_client or get_kis_client()
         self._price_cache = PriceCache(ttl_seconds=60)  # 현재가 1분 캐시
         self._ohlcv_cache = PriceCache(ttl_seconds=300)  # OHLCV 5분 캐시
         self._index_cache = PriceCache(ttl_seconds=120)  # 시장 지수 2분 캐시
+        self._us_index_cache = PriceCache(ttl_seconds=300)  # 미국 지수 5분 캐시
 
     async def get_current_price(
         self,
@@ -84,7 +95,7 @@ class PriceService:
 
         try:
             data = await self.kis_client.get_current_price(stock_code)
-            data["updated_at"] = datetime.now().isoformat()
+            data["updated_at"] = now_kst().isoformat()
             await self._price_cache.set(cache_key, data)
             return data
         except Exception as e:
@@ -121,7 +132,7 @@ class PriceService:
         if codes_to_fetch:
             fetched = await self.kis_client.get_multiple_prices(codes_to_fetch)
             for code, data in fetched.items():
-                data["updated_at"] = datetime.now().isoformat()
+                data["updated_at"] = now_kst().isoformat()
                 await self._price_cache.set(f"price:{code}", data)
                 results[code] = data
 
@@ -167,13 +178,72 @@ class PriceService:
             logger.error(f"Failed to fetch OHLCV for {stock_code}: {e}")
             raise
 
+    async def _fetch_us_index(self, key: str) -> Optional[dict]:
+        """Yahoo Finance에서 미국 지수 1건 조회."""
+        info = self.US_INDEX_SYMBOLS[key]
+        symbol = info["symbol"]
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+        params = {"range": "1d", "interval": "1d"}
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(url, params=params, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            meta = data["chart"]["result"][0]["meta"]
+            current = Decimal(str(meta["regularMarketPrice"]))
+            prev_close = Decimal(str(meta["chartPreviousClose"]))
+            change = current - prev_close
+            change_rate = (change / prev_close * 100) if prev_close else Decimal("0")
+
+            return {
+                "index_code": key,
+                "index_name": info["name"],
+                "current_value": current,
+                "change": change,
+                "change_rate": change_rate.quantize(Decimal("0.01")),
+                "volume": 0,
+                "trading_value": 0,
+            }
+        except Exception as e:
+            logger.warning(f"US index fetch failed ({key}): {e}")
+            return None
+
+    async def get_us_market_indices(self) -> dict[str, dict]:
+        """미국 3대 지수 조회 (S&P 500, NASDAQ, DOW)."""
+        cache_key = "us_market_indices"
+        cached = await self._us_index_cache.get(cache_key)
+        if cached:
+            return cached
+
+        results = await asyncio.gather(
+            self._fetch_us_index("sp500"),
+            self._fetch_us_index("nasdaq"),
+            self._fetch_us_index("dow"),
+        )
+
+        us_indices = {}
+        for key, data in zip(self.US_INDEX_SYMBOLS.keys(), results):
+            if data:
+                us_indices[key] = data
+
+        if us_indices:
+            await self._us_index_cache.set(cache_key, us_indices)
+
+        return us_indices
+
     async def get_market_indices(self) -> dict:
-        """코스피/코스닥 시장 지수 조회.
+        """코스피/코스닥 + 미국 3대 지수 조회.
 
         Returns:
             {
                 "kospi": {...},
                 "kosdaq": {...},
+                "sp500": {...},
+                "nasdaq": {...},
+                "dow": {...},
                 "updated_at": "...",
             }
         """
@@ -183,14 +253,19 @@ class PriceService:
             return cached
 
         try:
-            kospi, kosdaq = await asyncio.gather(
-                self.kis_client.get_market_index("0001"),
-                self.kis_client.get_market_index("1001"),
+            # 한국 지수 + 미국 지수 병렬 조회
+            (kospi, kosdaq), us_indices = await asyncio.gather(
+                asyncio.gather(
+                    self.kis_client.get_market_index("0001"),
+                    self.kis_client.get_market_index("1001"),
+                ),
+                self.get_us_market_indices(),
             )
             result = {
                 "kospi": kospi,
                 "kosdaq": kosdaq,
-                "updated_at": datetime.now().isoformat(),
+                **us_indices,
+                "updated_at": now_kst().isoformat(),
             }
             await self._index_cache.set(cache_key, result)
             return result
